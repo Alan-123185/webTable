@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: studysystem
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/webtable?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: remote  # 就改了这里！
+    password: 123456
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  file:
+    upload-dir: Disk
+mybatis:
+  mapper-locations: classpath*:com/xushu/webtable/fileMapper.xml
+  configuration:
+    log-imp: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: NULL
+
+jwt:
+  secret-key: I-love-Xushu-but-she-don't-like-me
+  expiration: 3600000
+path:
+  pathhead: /mnt/d/IDEA文件/WebTable/Disk/  # 就改了这里！
+extName:
+  type: jpg,jpeg,png,gif,bmp,webp,pdf,txt,md,json,xml
+user:
+  volume: 1073741824

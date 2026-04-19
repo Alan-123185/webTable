@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebTable 网盘</title>
+    <!-- 最简CDN，无任何跨域拦截 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <style>
+        body { font-family: "Microsoft YaHei"; background:#f5f7fa; padding:20px; margin:0; }
+        .container { max-width:1200px; margin:0 auto; }
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; background:white; padding:20px; border-radius:8px; }
+        .login-box { width:400px; margin:100px auto; background:white; padding:40px; border-radius:8px; text-align:center; }
+        .toolbar { display:flex; gap:10px; align-items:center; }
+        .nav-area { display:flex; align-items:center; gap:15px; }
+        .breadcrumb { cursor:pointer; color:#409EFF; font-weight:bold; }
+        .folder-text { color:#409EFF; font-weight:bold; }
+    </style>
+</head>
+<body>
+<div id="app" class="container">
+    <div v-if="!token" class="login-box">
+        <h2>🔐 WebTable 登录</h2>
+        <el-input v-model="form.userName" placeholder="用户名" style="margin-bottom:15px;"></el-input>
+        <el-input v-model="form.password" type="password" placeholder="密码" style="margin-bottom:15px;"></el-input>
+        <el-button type="primary" @click="login" style="width:100%;">进入网盘</el-button>
+        <div style="margin-top:15px;">
+            <el-button type="text" @click="showRegi=true">没有账号？去注册</el-button>
+        </div>
+    </div>
+
+    <el-dialog v-model="showRegi" title="用户注册">
+        <el-input v-model="regiForm.userName" placeholder="用户名" style="margin-bottom:15px;"></el-input>
+        <el-input v-model="regiForm.password" type="password" placeholder="密码" style="margin-bottom:15px;"></el-input>
+        <template #footer>
+            <el-button @click="showRegi=false">取消</el-button>
+            <el-button type="primary" @click="register">注册</el-button>
+        </template>
+    </el-dialog>
+
+    <div v-else>
+        <div class="header">
+            <div class="nav-area">
+                <el-button v-if="isShareView" size="small" @click="exitShareView">返回</el-button>
+                <el-button v-else size="small" :disabled="parentId===0" @click="goBack">返回上一级</el-button>
+                <span class="breadcrumb" @click="goHome">根目录</span>
+                <span v-if="currentFolderName">/{{currentFolderName}}</span>
+            </div>
+            <div class="toolbar">
+                <el-input v-model="storeLink" placeholder="分享码" style="width:140px;"></el-input>
+                <el-button type="primary" size="small" @click="findFile">查找</el-button>
+
+                <!-- 新增：新建文件夹按钮 -->
+                <el-popover v-if="!isShareView" placement="bottom" :width="200" trigger="click">
+                    <template #reference>
+                        <el-button type="warning" size="small">📁 新建文件夹</el-button>
+                    </template>
+                    <el-input v-model="newFolderName" placeholder="输入名称" size="small"></el-input>
+                    <div style="margin-top: 10px; text-align: right;">
+                        <el-button size="small" type="primary" @click="createFolder">确定</el-button>
+                    </div>
+                </el-popover>
+
+                <el-upload v-if="!isShareView" :action="`${BASE_URL}/Mydisk/upload`" :data="{parentId}" :headers="{token}" :on-success="handleSuccess" :show-file-list="false">
+                    <el-button type="success" size="small">上传</el-button>
+                </el-upload>
+                <el-button type="danger" size="small" @click="logout">退出</el-button>
+            </div>
+        </div>
+
+        <el-table :data="files" border style="width:100%">
+            <el-table-column prop="originalFileName" label="文件名">
+                <template #default="scope">
+                        <span :class="scope.row.isFolder===1?'folder-text':''">
+                            {{scope.row.isFolder===1?'📁':'📄'}}{{scope.row.originalFileName}}
+                        </span>
+                </template>
+            </el-table-column>
+            <el-table-column label="大小" width="120">
+                <template #default="scope">{{scope.row.isFolder===1?'--':formatSize(scope.row.fileSize)}}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="380">
+                <template #default="scope">
+                    <el-button v-if="scope.row.isFolder===1" size="small" type="primary" @click="enterFolder(scope.row.id,scope.row.originalFileName)">进入</el-button>
+
+                    <!-- 文件专属按钮 -->
+                    <template v-else>
+                        <el-button size="small" @click="download(scope.row.id)">下载</el-button>
+                        <el-button size="small" type="warning" @click="preview(scope.row.id)">预览</el-button>
+                        <el-button size="small" type="success" @click="share(scope.row.id)">分享</el-button>
+                    </template>
+
+                    <el-button size="small" type="danger" @click="del(scope.row.id)">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </div>
+</div>
+
+<!-- 最简脚本，无任何多余配置，Edge必加载 -->
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+<script>
+    const { createApp, ref, reactive } = Vue
+    const BASE_URL = window.location.origin
+    const axiosInstance = axios.create({ baseURL: BASE_URL })
+
+    const app = createApp({
+        setup() {
+            const token = ref(localStorage.getItem('token')||'')
+            const files = ref([])
+            const form = reactive({userName:'',password:''})
+            const regiForm = reactive({userName:'',password:''})
+            const showRegi = ref(false)
+            const storeLink = ref('')
+            const isShareView = ref(false)
+            const parentId = ref(0)
+            const currentFolderName = ref('')
+            const historyStack = ref([])
+            const newFolderName = ref('') // 新增：文件夹名称
+
+            const login = async ()=>{
+                try{
+                    const res = await axiosInstance.post('/Mydisk/login',form)
+                    if(res.data.code===1){token.value=res.data.data.token;localStorage.setItem('token',token.value);fetchFiles()}else alert(res.data.msg)
+                }catch(e){alert('服务器连接失败')}
+            }
+            const register = async ()=>{
+                try{const res=await axiosInstance.post('/Mydisk/register',regiForm);res.data.code===1?(alert('成功'),showRegi.value=false):alert(res.data.msg)}catch(e){alert('失败')}
+            }
+            const fetchFiles = async ()=>{
+                const res=await axiosInstance.get('/Mydisk/select',{params:{originalFileName:'',parentId:parentId.value,page:1,number:50},headers:{token:token.value}})
+                if(res.data.code===1)files.value=res.data.data.files
+            }
+
+            // 新增：分享逻辑
+            const share = async (id)=>{
+                try{
+                    const res = await axiosInstance.post('/Mydisk/share', null, { params: { fileId: id }, headers: { token: token.value } });
+                    if(res.data.code === 1) prompt("分享码:", res.data.data.linkName);
+                }catch(e){ alert("分享失败"); }
+            }
+
+            // 新增：创建文件夹逻辑
+            const createFolder = async () => {
+                if (!newFolderName.value) return;
+                try {
+                    await axiosInstance.post('/Mydisk/mkdir', null, {
+                        params: { fileName: newFolderName.value, parentId: parentId.value },
+                        headers: { token: token.value }
+                    });
+                    alert("创建成功");
+                    newFolderName.value = '';
+                    fetchFiles();
+                } catch (e) { alert("创建失败"); }
+            };
+
+            const findFile = async ()=>{if(!storeLink.value)return;const res=await axiosInstance.get('/Mydisk/getlinkinfo',{params:{link:storeLink.value},headers:{token:token.value}});res.data.code===1&&(files.value=[res.data.data],isShareView.value=true)}
+            const exitShareView = ()=>{isShareView.value=false;fetchFiles()}
+            const handleSuccess = ()=>{alert('上传成功');fetchFiles()}
+            const download = (id)=>window.open(`${BASE_URL}/Mydisk/download/?fileId=${id}&token=${token.value}`)
+            const preview = (id)=>window.open(`${BASE_URL}/Mydisk/preview/${id}?token=${token.value}`)
+            const del = async (id)=>{if(!confirm('确定删除？'))return;await axiosInstance.delete('/Mydisk/delete',{data:[id],headers:{token:token.value}});fetchFiles()}
+            const enterFolder = (id,name)=>{historyStack.value.push({id:parentId.value,name:currentFolderName.value});parentId.value=id;currentFolderName.value=name;fetchFiles()}
+            const goBack = ()=>{if(historyStack.value.length>0){const prev=historyStack.value.pop();parentId.value=prev.id;currentFolderName.value=prev.name;fetchFiles()}}
+            const goHome = ()=>{parentId.value=0;currentFolderName.value='';historyStack.value=[];isShareView.value=false;fetchFiles()}
+            const logout = ()=>{token.value='';localStorage.removeItem('token');location.reload()}
+            const formatSize = (b)=>b?(b/1024).toFixed(1)+'KB':'--'
+
+            token.value&&fetchFiles()
+            // 记得把新增加的变量和方法 return 出去
+            return {token,form,regiForm,showRegi,files,storeLink,isShareView,parentId,currentFolderName,newFolderName,login,register,share,createFolder,findFile,exitShareView,handleSuccess,download,preview,del,enterFolder,goBack,goHome,logout,formatSize,BASE_URL}
+        }
+    })
+
+    app.use(ElementPlus)
+    app.mount('#app')
+</script>
+</body>
+</html>

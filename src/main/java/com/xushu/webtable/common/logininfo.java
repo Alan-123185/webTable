@@ -1,0 +1,12 @@
+package com.xushu.webtable.common;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class logininfo {
+    private String username;
+    private Integer id;
+    private String token;
+}
