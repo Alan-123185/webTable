@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xushu.webtable.mapper.LogMapper">
+    <insert id="batchInsert">
+        INSERT INTO operation_log (operator_id, description, operate_type, status, cost_ms, create_time)
+        VALUES
+        <foreach collection="logs" item="log" separator=",">
+            (#{log.operatorId},#{log.description}, #{log.operateType}, #{log.status}, #{log.costMs}, #{log.createTime})
+        </foreach>
+    </insert>
+
+
+    <delete id="deleteLogs" >
+        DELETE FROM operation_log WHERE create_time <![CDATA[<=]]> #{time}
+    </delete>
+</mapper>

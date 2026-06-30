@@ -4,6 +4,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * 跨域资源配置类
+ * 用于解决前后端分离开发中的跨域访问问题
+ */
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
     @Override

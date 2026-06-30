@@ -3,13 +3,19 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.xushu.webtable.mapper.fileMapper">
-<select id="selectFile" resultType="com.xushu.webtable.common.File">
+
+    <select id="selectFile" resultType="com.xushu.webtable.common.File">
         select * from file where original_file_name like concat ('%',#{originalFileName},'%')
                              and user_id=#{userId}
                              and parent_id=#{parentId}
         order by create_time desc
     </select>
-<delete id="deleteFile">
-    delete from file where id in  <foreach collection="ids" item="id" close=")" open="(" separator=",">#{id}</foreach>
-</delete>
+
+    <delete id="deleteFile">
+    delete from file where id in
+                           <foreach collection="ids" item="id" close=")" open="(" separator=",">#{id}</foreach>
+    </delete>
+
+
+
 </mapper>

@@ -7,6 +7,8 @@ import lombok.Data;
 @AllArgsConstructor
 public class logininfo {
     private String username;
-    private Integer id;
+    private Long  id;
     private String token;
+    private Long volume;
+    private Long totalVolume;
 }

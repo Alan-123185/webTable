@@ -3,180 +3,2114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebTable 网盘</title>
-    <!-- 最简CDN，无任何跨域拦截 -->
-    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <title>MyDisk 个人网盘</title>
+    <script src="https://unpkg.com/axios@1.6.2/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/vue@3.4.15/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.5.5/dist/index.css">
+    <script src="https://unpkg.com/element-plus@2.5.5/dist/index.full.min.js"></script>
+    <script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
+    <script src="https://unpkg.com/spark-md5@3.0.2/spark-md5.min.js"></script>
     <style>
-        body { font-family: "Microsoft YaHei"; background:#f5f7fa; padding:20px; margin:0; }
-        .container { max-width:1200px; margin:0 auto; }
-        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; background:white; padding:20px; border-radius:8px; }
-        .login-box { width:400px; margin:100px auto; background:white; padding:40px; border-radius:8px; text-align:center; }
-        .toolbar { display:flex; gap:10px; align-items:center; }
-        .nav-area { display:flex; align-items:center; gap:15px; }
-        .breadcrumb { cursor:pointer; color:#409EFF; font-weight:bold; }
-        .folder-text { color:#409EFF; font-weight:bold; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        #app {
+            min-height: 100vh;
+        }
+
+        /* 登录/注册页面样式 */
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-header h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .auth-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 主界面样式 */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: white;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-left h1 {
+            font-size: 22px;
+            color: #333;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #666;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px 30px;
+            background: #f5f7fa;
+        }
+
+        /* 工具栏 */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .toolbar-left {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 面包屑导航 */
+        .breadcrumb-bar {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .breadcrumb-item {
+            cursor: pointer;
+            color: #667eea;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb-item:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        .breadcrumb-item.active {
+            color: #333;
+            cursor: default;
+        }
+
+        .breadcrumb-item.active:hover {
+            text-decoration: none;
+        }
+
+        .breadcrumb-separator {
+            margin: 0 8px;
+            color: #999;
+        }
+
+        /* 文件列表视图 */
+        .file-list {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .file-list-header {
+            display: grid;
+            grid-template-columns: 40px 2fr 1fr 1fr 120px;
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .file-list-item {
+            display: grid;
+            grid-template-columns: 40px 2fr 1fr 1fr 120px;
+            padding: 12px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .file-list-item:hover {
+            background: #f8f9fa;
+        }
+
+        .file-list-item.selected {
+            background: #e8f0fe;
+        }
+
+        .file-list-item .file-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .file-list-item .file-icon {
+            font-size: 24px;
+        }
+
+        .file-list-item .file-size,
+        .file-list-item .file-date {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .file-list-item .file-actions {
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .file-list-item:hover .file-actions {
+            opacity: 1;
+        }
+
+        /* 网格视图 */
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .file-grid-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #f8f9fa;
+            position: relative;
+        }
+
+        .file-grid-item:hover {
+            background: #e9ecef;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-grid-item.selected {
+            background: #e8f0fe;
+            border: 2px solid #667eea;
+        }
+
+        .file-grid-item .file-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .file-grid-item .file-name {
+            text-align: center;
+            font-size: 13px;
+            word-break: break-word;
+            max-height: 42px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            color: #333;
+        }
+
+        .file-grid-item .file-checkbox {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+        }
+
+        .folder-icon {
+            color: #ffc107;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #999;
+        }
+
+        .empty-state .empty-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* 上传区域 */
+        .upload-drop-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-drop-zone:hover,
+        .upload-drop-zone.drag-over {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-drop-zone .upload-icon {
+            font-size: 56px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        /* 上传进度 */
+        .upload-progress-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .upload-progress-item:last-child {
+            border-bottom: none;
+        }
+
+        .upload-file-name {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+            margin-right: 15px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .upload-progress-bar {
+            width: 200px;
+            margin-right: 15px;
+        }
+
+        .upload-status {
+            font-size: 13px;
+            color: #666;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        /* 右键菜单 */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            min-width: 180px;
+            padding: 6px 0;
+        }
+
+        .context-menu-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .context-menu-item:hover {
+            background: #f5f5f5;
+        }
+
+        .context-menu-item.danger {
+            color: #f56c6c;
+        }
+
+        .context-menu-item.danger:hover {
+            background: #fef0f0;
+        }
+
+        .context-menu-item .menu-icon {
+            margin-right: 10px;
+            font-size: 16px;
+        }
+
+        .context-menu-divider {
+            height: 1px;
+            background: #eee;
+            margin: 6px 0;
+        }
+
+        /* 视图切换按钮 */
+        .view-toggle {
+            display: flex;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .view-toggle button {
+            padding: 8px 12px;
+            border: none;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+
+        .view-toggle button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .view-toggle button:hover:not(.active) {
+            background: #f0f0f0;
+        }
+
+        /* 分页 */
+        .pagination-bar {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background: white;
+            border-radius: 0 0 12px 12px;
+            margin-top: -1px;
+        }
+
+        /* 存储信息 */
+        .storage-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .header {
+                padding: 12px 15px;
+            }
+
+            .content {
+                padding: 15px;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .file-list-header,
+            .file-list-item {
+                grid-template-columns: 30px 2fr 1fr;
+            }
+
+            .file-list-header > :nth-child(4),
+            .file-list-header > :nth-child(5),
+            .file-list-item > :nth-child(4),
+            .file-list-item > :nth-child(5) {
+                display: none;
+            }
+
+            .file-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 12px;
+                padding: 15px;
+            }
+        }
+
+        /* 动画 */
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.3s ease;
+        }
+
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+        }
+
+        /* 加载遮罩 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-<div id="app" class="container">
-    <div v-if="!token" class="login-box">
-        <h2>🔐 WebTable 登录</h2>
-        <el-input v-model="form.userName" placeholder="用户名" style="margin-bottom:15px;"></el-input>
-        <el-input v-model="form.password" type="password" placeholder="密码" style="margin-bottom:15px;"></el-input>
-        <el-button type="primary" @click="login" style="width:100%;">进入网盘</el-button>
-        <div style="margin-top:15px;">
-            <el-button type="text" @click="showRegi=true">没有账号？去注册</el-button>
+<div id="app">
+    <!-- 加载遮罩 -->
+    <div class="loading-overlay" v-if="globalLoading">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- 登录/注册页面 -->
+    <div v-if="!isLoggedIn" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>📁 WebTable 网盘</h1>
+                <p>安全、便捷的个人云存储服务</p>
+            </div>
+
+            <el-tabs v-model="activeTab" type="card" stretch>
+                <el-tab-pane label="登录" name="login">
+                    <el-form :model="loginForm" style="margin-top: 20px;" @submit.prevent="handleLogin">
+                        <el-form-item>
+                            <el-input
+                                    v-model="loginForm.userName"
+                                    placeholder="请输入用户名"
+                                    prefix-icon="User"
+                                    size="large"
+                                    maxlength="20"
+                            ></el-input>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-input
+                                    v-model="loginForm.password"
+                                    type="password"
+                                    placeholder="请输入密码"
+                                    prefix-icon="Lock"
+                                    size="large"
+                                    show-password
+                                    @keyup.enter="handleLogin"
+                            ></el-input>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button
+                                    type="primary"
+                                    @click="handleLogin"
+                                    :loading="loginLoading"
+                                    size="large"
+                                    style="width: 100%;"
+                            >登 录</el-button>
+                        </el-form-item>
+                    </el-form>
+                </el-tab-pane>
+
+                <el-tab-pane label="注册" name="register">
+                    <el-form :model="registerForm" style="margin-top: 20px;" @submit.prevent="handleRegister">
+                        <el-form-item>
+                            <el-input
+                                    v-model="registerForm.userName"
+                                    placeholder="请输入用户名"
+                                    prefix-icon="User"
+                                    size="large"
+                                    maxlength="20"
+                            ></el-input>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-input
+                                    v-model="registerForm.email"
+                                    placeholder="请输入邮箱地址"
+                                    prefix-icon="Message"
+                                    size="large"
+                            ></el-input>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-input
+                                    v-model="registerForm.password"
+                                    type="password"
+                                    placeholder="请输入密码（8-20 位，含大小写字母和数字）"
+                                    prefix-icon="Lock"
+                                    size="large"
+                                    show-password
+                            ></el-input>
+                        </el-form-item>
+                        <el-form-item>
+                            <div style="display: flex; gap: 10px;">
+                                <el-input
+                                        v-model="registerCode"
+                                        placeholder="请输入验证码"
+                                        size="large"
+                                        style="flex: 1;"
+                                        @keyup.enter="handleRegister"
+                                ></el-input>
+                                <el-button
+                                        type="primary"
+                                        @click="sendCode"
+                                        :disabled="codeDisabled"
+                                        size="large"
+                                        style="min-width: 120px;"
+                                >{{ codeDisabled ? `${countdown}s` : '获取验证码' }}</el-button>
+                            </div>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button
+                                    type="primary"
+                                    @click="handleRegister"
+                                    :loading="registerLoading"
+                                    size="large"
+                                    style="width: 100%;"
+                            >注 册</el-button>
+                        </el-form-item>
+                    </el-form>
+                </el-tab-pane>
+            </el-tabs>
         </div>
     </div>
 
-    <el-dialog v-model="showRegi" title="用户注册">
-        <el-input v-model="regiForm.userName" placeholder="用户名" style="margin-bottom:15px;"></el-input>
-        <el-input v-model="regiForm.password" type="password" placeholder="密码" style="margin-bottom:15px;"></el-input>
+    <!-- 主界面 -->
+    <div v-else class="main-container">
+        <!-- 顶部导航 -->
+        <div class="header">
+            <div class="header-left">
+                <h1>📁 WebTable</h1>
+            </div>
+            <div class="header-right">
+                <div class="storage-info">
+                    <span>存储空间</span>
+                    <el-progress :percentage="storagePercent" :stroke-width="8" style="width: 150px;"></el-progress>
+                    <span>{{ formatSize(usedStorage) }} / {{ formatSize(totalStorage) }}</span>
+                </div>
+                <div class="user-info">
+                    <el-avatar :size="32" style="background: #667eea;">{{ userInfo.username?.charAt(0)?.toUpperCase() }}</el-avatar>
+                    <span>{{ userInfo.username }}</span>
+                </div>
+                <el-button type="info" size="small" @click="handleLogout">退出</el-button>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="content">
+            <!-- 工具栏 -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <el-button type="primary" @click="showUploadDialog = true">
+                        <el-icon><Upload /></el-icon> 上传文件
+                    </el-button>
+                    <el-button type="success" @click="showCreateFolderDialog = true">
+                        <el-icon><FolderAdd /></el-icon> 新建文件夹
+                    </el-button>
+                    <el-button type="danger" @click="handleBatchDelete" :disabled="selectedFiles.length === 0">
+                        <el-icon><Delete /></el-icon> 删除 ({{ selectedFiles.length }})
+                    </el-button>
+                    <!-- 刷新按钮已移除，请使用浏览器的刷新功能 -->
+                    <el-button type="warning" @click="showRecycleBin = true">
+                        <el-icon><Delete /></el-icon> 回收站
+                    </el-button>
+                </div>
+                <div class="toolbar-right">
+                    <el-input
+                            v-model="searchKeyword"
+                            placeholder="搜索文件..."
+                            clearable
+                            style="width: 220px;"
+                            @clear="handleSearch"
+                            @keyup.enter="handleSearch"
+                    >
+                        <template #prefix>
+                            <el-icon><Search /></el-icon>
+                        </template>
+                    </el-input>
+                    <div class="view-toggle">
+                        <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">☰</button>
+                        <button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">⊞</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 面包屑导航 -->
+            <div class="breadcrumb-bar">
+                <span class="breadcrumb-item" :class="{ active: currentPath.length === 0 }" @click="navigateToFolder(0)">
+                    🏠 根目录
+                </span>
+                <template v-for="(folder, index) in currentPath" :key="folder.id">
+                    <span class="breadcrumb-separator">/</span>
+                    <span
+                            class="breadcrumb-item"
+                            :class="{ active: index === currentPath.length - 1 }"
+                            @click="navigateToFolder(folder.id)"
+                    >{{ folder.name }}</span>
+                </template>
+            </div>
+
+            <!-- 文件列表视图 -->
+            <div class="file-list" v-if="viewMode === 'list' && files.length > 0">
+                <div class="file-list-header">
+                    <div>
+                        <el-checkbox v-model="isAllSelected" @change="handleSelectAll"></el-checkbox>
+                    </div>
+                    <div>文件名</div>
+                    <div>大小</div>
+                    <div>修改时间</div>
+                    <div>操作</div>
+                </div>
+                <!-- 返回上级按钮已移除，请使用浏览器的后退功能 -->
+                <!-- 文件列表 -->
+                <div
+                        v-for="file in sortedFiles"
+                        :key="file.id"
+                        class="file-list-item"
+                        :class="{ selected: selectedFiles.includes(file.id) }"
+                        @click="handleFileClick(file)"
+                        @contextmenu.prevent="showContextMenu($event, file)"
+                >
+                    <div>
+                        <el-checkbox
+                                :model-value="selectedFiles.includes(file.id)"
+                                @update:model-value="toggleSelection(file.id)"
+                                @click.stop
+                        ></el-checkbox>
+                    </div>
+                    <div class="file-name">
+                        <span class="file-icon" :class="{ 'folder-icon': file.isFolder === 1 }">
+                            {{ file.isFolder === 1 ? '📁' : getFileIcon(file.originalFileName) }}
+                        </span>
+                        <span>{{ file.originalFileName }}</span>
+                    </div>
+                    <div class="file-size">{{ file.isFolder === 1 ? '-' : formatSize(file.fileSize) }}</div>
+                    <div class="file-date">{{ formatDate(file.createTime) }}</div>
+                    <div class="file-actions">
+                        <el-button v-if="file.isFolder !== 1" type="primary" size="small" link @click.stop="handleDownload(file)">下载</el-button>
+                        <el-button v-if="file.isFolder !== 1" type="success" size="small" link @click.stop="handleShare(file)">分享</el-button>
+                        <el-button type="warning" size="small" link @click.stop="handleRename(file)">重命名</el-button>
+                        <el-button type="danger" size="small" link @click.stop="handleDelete(file)">删除</el-button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文件网格视图 -->
+            <div class="file-grid" v-if="viewMode === 'grid'">
+                <!-- 返回上级按钮已移除，请使用浏览器的后退功能 -->
+                <!-- 文件列表 -->
+                <div
+                        v-for="file in sortedFiles"
+                        :key="file.id"
+                        class="file-grid-item"
+                        :class="{ selected: selectedFiles.includes(file.id) }"
+                        @click="handleFileClick(file)"
+                        @contextmenu.prevent="showContextMenu($event, file)"
+                >
+                    <div class="file-checkbox">
+                        <el-checkbox
+                                :model-value="selectedFiles.includes(file.id)"
+                                @update:model-value="toggleSelection(file.id)"
+                                @click.stop
+                        ></el-checkbox>
+                    </div>
+                    <div class="file-icon" :class="{ 'folder-icon': file.isFolder === 1 }">
+                        {{ file.isFolder === 1 ? '📁' : getFileIcon(file.originalFileName) }}
+                    </div>
+                    <div class="file-name">{{ file.originalFileName }}</div>
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div class="empty-state" v-if="files.length === 0 && !loading">
+                <div class="empty-icon">📂</div>
+                <p>{{ searchKeyword ? '未找到匹配的文件' : '当前目录为空' }}</p>
+                <el-button type="primary" @click="showUploadDialog = true">上传文件</el-button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 上传对话框 -->
+    <el-dialog v-model="showUploadDialog" title="上传文件" width="600px" @close="clearUploadQueue">
+        <div class="upload-drop-zone" @click="triggerFileInput" @dragover.prevent="dragOver = true" @dragleave="dragOver = false" @drop.prevent="handleDrop" :class="{ 'drag-over': dragOver }">
+            <div class="upload-icon">📤</div>
+            <p>点击选择文件或拖拽文件到此处</p>
+            <p style="font-size: 12px; color: #999; margin-top: 8px;">支持多文件上传，单文件最大 100MB</p>
+            <input type="file" ref="fileInput" @change="handleFileSelect" style="display: none;" multiple>
+        </div>
+        <div v-if="uploadQueue.length > 0" style="margin-top: 20px; max-height: 300px; overflow-y: auto;">
+            <div v-for="(item, index) in uploadQueue" :key="index" class="upload-progress-item">
+                <span class="upload-file-name">{{ item.file.name }}</span>
+                <el-progress class="upload-progress-bar" :percentage="item.progress" :status="item.status === 'success' ? 'success' : item.status === 'error' ? 'exception' : null"></el-progress>
+                <span class="upload-status">{{ item.statusText }}</span>
+            </div>
+        </div>
         <template #footer>
-            <el-button @click="showRegi=false">取消</el-button>
-            <el-button type="primary" @click="register">注册</el-button>
+            <el-button @click="showUploadDialog = false" :disabled="uploading">关闭</el-button>
+            <el-button type="primary" @click="startUpload" :disabled="uploadQueue.length === 0 || uploading" :loading="uploading">开始上传</el-button>
         </template>
     </el-dialog>
 
-    <div v-else>
-        <div class="header">
-            <div class="nav-area">
-                <el-button v-if="isShareView" size="small" @click="exitShareView">返回</el-button>
-                <el-button v-else size="small" :disabled="parentId===0" @click="goBack">返回上一级</el-button>
-                <span class="breadcrumb" @click="goHome">根目录</span>
-                <span v-if="currentFolderName">/{{currentFolderName}}</span>
+    <!-- 分享对话框 -->
+    <el-dialog v-model="showShareDialog" title="分享文件" width="450px">
+        <div v-if="shareInfo" style="text-align: center;">
+            <p style="margin-bottom: 15px; color: #666;">文件 {{ shareFileName }} 的分享链接已生成</p>
+            <el-input v-model="shareLink" readonly size="large">
+                <template #append>
+                    <el-button @click="copyShareLink">复制</el-button>
+                </template>
+            </el-input>
+            <p style="margin-top: 15px; font-size: 13px; color: #999;">
+                有效期至 {{ shareExpiry }}
+            </p>
+        </div>
+        <template #footer>
+            <el-button @click="showShareDialog = false">关闭</el-button>
+        </template>
+    </el-dialog>
+
+    <!-- 新建文件夹对话框 -->
+    <el-dialog v-model="showCreateFolderDialog" title="新建文件夹" width="400px">
+        <el-form @submit.prevent="confirmCreateFolder">
+            <el-form-item label="文件夹名称">
+                <el-input v-model="newFolderName" placeholder="请输入文件夹名称" @keyup.enter="confirmCreateFolder"></el-input>
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="showCreateFolderDialog = false">取消</el-button>
+            <el-button type="primary" @click="confirmCreateFolder" :loading="creatingFolder">确定</el-button>
+        </template>
+    </el-dialog>
+
+    <!-- 重命名对话框 -->
+    <el-dialog v-model="showRenameDialog" title="重命名" width="400px">
+        <el-form @submit.prevent="confirmRename">
+            <el-form-item label="新名称">
+                <el-input v-model="newFileName" placeholder="请输入新名称" @keyup.enter="confirmRename"></el-input>
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="showRenameDialog = false">取消</el-button>
+            <el-button type="primary" @click="confirmRename" :loading="renaming">确定</el-button>
+        </template>
+    </el-dialog>
+
+    <!-- 移动文件对话框 -->
+    <el-dialog v-model="showMoveDialog" title="移动文件" width="500px">
+        <el-form>
+            <el-form-item label="目标文件夹">
+                <el-select v-model="moveTargetId" placeholder="选择目标文件夹" style="width: 100%;">
+                    <el-option label="根目录" :value="0"></el-option>
+                    <el-option v-for="folder in folderList" :key="folder.id" :label="folder.originalFileName" :value="folder.id"></el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="showMoveDialog = false">取消</el-button>
+            <el-button type="primary" @click="confirmMove" :loading="moving">确定</el-button>
+        </template>
+    </el-dialog>
+
+    <!-- 右键菜单 -->
+    <div v-show="contextMenu.visible" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }">
+        <div v-if="contextMenu.file?.isFolder !== 1" class="context-menu-item" @click="handleDownload(contextMenu.file)">
+            <span class="menu-icon">⬇️</span> 下载
+        </div>
+        <div v-if="contextMenu.file?.isFolder !== 1" class="context-menu-item" @click="handleShare(contextMenu.file)">
+            <span class="menu-icon">🔗</span> 分享
+        </div>
+        <div v-if="contextMenu.file?.isFolder !== 1" class="context-menu-item" @click="handlePreview(contextMenu.file)">
+            <span class="menu-icon">👁️</span> 预览
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" @click="handleRename(contextMenu.file)">
+            <span class="menu-icon">✏️</span> 重命名
+        </div>
+        <div class="context-menu-item" @click="showMoveFileDialog(contextMenu.file)">
+            <span class="menu-icon">📦</span> 移动到
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item danger" @click="handleDelete(contextMenu.file)">
+            <span class="menu-icon">🗑️</span> 删除
+        </div>
+    </div>
+
+    <!-- 回收站对话框 -->
+    <el-dialog v-model="showRecycleBin" title="回收站" width="900px" @open="loadRecycleBin">
+        <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>🗑️ 回收站</span>
+                <div>
+                    <el-button type="danger" size="small" @click="handleRestoreBatch" :disabled="selectedRecycleBinFiles.length === 0">
+                        <el-icon><RefreshRight /></el-icon> 恢复选中 ({{ selectedRecycleBinFiles.length }})
+                    </el-button>
+                    <el-button type="warning" size="small" @click="handlePermanentlyDeleteBatch" :disabled="selectedRecycleBinFiles.length === 0">
+                        <el-icon><Delete /></el-icon> 永久删除选中
+                    </el-button>
+                    <el-button type="info" size="small" @click="clearRecycleBin">
+                        <el-icon><Delete /></el-icon> 清空回收站
+                    </el-button>
+                </div>
             </div>
-            <div class="toolbar">
-                <el-input v-model="storeLink" placeholder="分享码" style="width:140px;"></el-input>
-                <el-button type="primary" size="small" @click="findFile">查找</el-button>
+        </template>
 
-                <!-- 新增：新建文件夹按钮 -->
-                <el-popover v-if="!isShareView" placement="bottom" :width="200" trigger="click">
-                    <template #reference>
-                        <el-button type="warning" size="small">📁 新建文件夹</el-button>
-                    </template>
-                    <el-input v-model="newFolderName" placeholder="输入名称" size="small"></el-input>
-                    <div style="margin-top: 10px; text-align: right;">
-                        <el-button size="small" type="primary" @click="createFolder">确定</el-button>
-                    </div>
-                </el-popover>
-
-                <el-upload v-if="!isShareView" :action="`${BASE_URL}/Mydisk/upload`" :data="{parentId}" :headers="{token}" :on-success="handleSuccess" :show-file-list="false">
-                    <el-button type="success" size="small">上传</el-button>
-                </el-upload>
-                <el-button type="danger" size="small" @click="logout">退出</el-button>
+        <div class="file-list" v-if="recycleBinFiles.length > 0">
+            <div class="file-list-header">
+                <div>
+                    <el-checkbox v-model="isAllRecycleBinSelected" @change="handleSelectAllRecycleBin"></el-checkbox>
+                </div>
+                <div>文件名</div>
+                <div>大小</div>
+                <div>删除时间</div>
+                <div>操作</div>
+            </div>
+            <div
+                    v-for="file in recycleBinFiles"
+                    :key="file.id"
+                    class="file-list-item"
+                    :class="{ selected: selectedRecycleBinFiles.includes(file.id) }"
+            >
+                <div>
+                    <el-checkbox
+                            :model-value="selectedRecycleBinFiles.includes(file.id)"
+                            @update:model-value="toggleRecycleBinSelection(file.id)"
+                    ></el-checkbox>
+                </div>
+                <div class="file-name">
+                    <span class="file-icon" :class="{ 'folder-icon': file.isFolder === 1 }">
+                        {{ file.isFolder === 1 ? '📁' : getFileIcon(file.originalFileName) }}
+                    </span>
+                    <span>{{ file.originalFileName }}</span>
+                </div>
+                <div class="file-size">{{ file.isFolder === 1 ? '-' : formatSize(file.fileSize) }}</div>
+                    <div class="file-date">{{ formatDate(file.createTime) }}</div>
+                <div class="file-actions">
+                    <el-button v-if="file.isFolder !== 1" type="success" size="small" link @click.stop="handleRestore(file)">恢复</el-button>
+                    <el-button type="danger" size="small" link @click.stop="handlePermanentlyDelete(file)">永久删除</el-button>
+                </div>
             </div>
         </div>
 
-        <el-table :data="files" border style="width:100%">
-            <el-table-column prop="originalFileName" label="文件名">
-                <template #default="scope">
-                        <span :class="scope.row.isFolder===1?'folder-text':''">
-                            {{scope.row.isFolder===1?'📁':'📄'}}{{scope.row.originalFileName}}
-                        </span>
-                </template>
-            </el-table-column>
-            <el-table-column label="大小" width="120">
-                <template #default="scope">{{scope.row.isFolder===1?'--':formatSize(scope.row.fileSize)}}</template>
-            </el-table-column>
-            <el-table-column label="操作" width="380">
-                <template #default="scope">
-                    <el-button v-if="scope.row.isFolder===1" size="small" type="primary" @click="enterFolder(scope.row.id,scope.row.originalFileName)">进入</el-button>
+        <div class="empty-state" v-else>
+            <div class="empty-icon">🗑️</div>
+            <p>回收站为空</p>
+        </div>
 
-                    <!-- 文件专属按钮 -->
-                    <template v-else>
-                        <el-button size="small" @click="download(scope.row.id)">下载</el-button>
-                        <el-button size="small" type="warning" @click="preview(scope.row.id)">预览</el-button>
-                        <el-button size="small" type="success" @click="share(scope.row.id)">分享</el-button>
-                    </template>
-
-                    <el-button size="small" type="danger" @click="del(scope.row.id)">删除</el-button>
-                </template>
-            </el-table-column>
-        </el-table>
-    </div>
+        <template #footer>
+            <el-button @click="showRecycleBin = false">关闭</el-button>
+        </template>
+    </el-dialog>
 </div>
 
-<!-- 最简脚本，无任何多余配置，Edge必加载 -->
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
-<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-
 <script>
-    const { createApp, ref, reactive } = Vue
-    const BASE_URL = window.location.origin
-    const axiosInstance = axios.create({ baseURL: BASE_URL })
+    const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } = Vue;
+    const { ElMessage, ElMessageBox } = ElementPlus;
 
-    const app = createApp({
+    // 创建 axios 实例
+    const api = axios.create({
+        baseURL: 'http://localhost:8080/Mydisk',
+        timeout: 60000
+    });
+
+    // 请求拦截器
+    api.interceptors.request.use(config => {
+        const token = localStorage.getItem('webtable_token');
+        if (token) {
+            config.headers.token = token;
+        }
+        return config;
+    }, error => {
+        return Promise.reject(error);
+    });
+
+    // 响应拦截器
+    api.interceptors.response.use(
+        response => response,
+        error => {
+            if (error.response?.status === 401) {
+                ElMessage.error('登录已过期，请重新登录');
+                localStorage.removeItem('webtable_token');
+                localStorage.removeItem('webtable_user');
+                location.reload();
+            } else if (error.response?.status === 403) {
+                ElMessage.error('权限不足');
+            } else {
+                ElMessage.error(error.response?.data?.msg || '请求失败');
+            }
+            return Promise.reject(error);
+        }
+    );
+
+    createApp({
         setup() {
-            const token = ref(localStorage.getItem('token')||'')
-            const files = ref([])
-            const form = reactive({userName:'',password:''})
-            const regiForm = reactive({userName:'',password:''})
-            const showRegi = ref(false)
-            const storeLink = ref('')
-            const isShareView = ref(false)
-            const parentId = ref(0)
-            const currentFolderName = ref('')
-            const historyStack = ref([])
-            const newFolderName = ref('') // 新增：文件夹名称
+            // ==================== 状态变量 ====================
+            const isLoggedIn = ref(false);
+            const userInfo = reactive({ username: '', id: null });
+            const activeTab = ref('login');
+            const globalLoading = ref(false);
 
-            const login = async ()=>{
-                try{
-                    const res = await axiosInstance.post('/Mydisk/login',form)
-                    if(res.data.code===1){token.value=res.data.data.token;localStorage.setItem('token',token.value);fetchFiles()}else alert(res.data.msg)
-                }catch(e){alert('服务器连接失败')}
-            }
-            const register = async ()=>{
-                try{const res=await axiosInstance.post('/Mydisk/register',regiForm);res.data.code===1?(alert('成功'),showRegi.value=false):alert(res.data.msg)}catch(e){alert('失败')}
-            }
-            const fetchFiles = async ()=>{
-                const res=await axiosInstance.get('/Mydisk/select',{params:{originalFileName:'',parentId:parentId.value,page:1,number:50},headers:{token:token.value}})
-                if(res.data.code===1)files.value=res.data.data.files
-            }
+            // 表单数据
+            const loginForm = reactive({ userName: '', password: '' });
+            const registerForm = reactive({ userName: '', email: '', password: '' });
+            const registerCode = ref('');
+            const loginLoading = ref(false);
+            const registerLoading = ref(false);
+            const codeDisabled = ref(false);
+            const countdown = ref(60);
+            let countdownTimer = null;
 
-            // 新增：分享逻辑
-            const share = async (id)=>{
-                try{
-                    const res = await axiosInstance.post('/Mydisk/share', null, { params: { fileId: id }, headers: { token: token.value } });
-                    if(res.data.code === 1) prompt("分享码:", res.data.data.linkName);
-                }catch(e){ alert("分享失败"); }
-            }
+            // 文件相关
+            const files = ref([]);
+            const currentFolderId = ref(0);
+            const currentPath = ref([]);
+            const selectedFiles = ref([]);
+            const toggleSelection = (id) => {
+                const index = selectedFiles.value.indexOf(id);
+                if (index === -1) {
+                    selectedFiles.value.push(id);
+                } else {
+                    selectedFiles.value.splice(index, 1);
+                }
+            };
+            const isAllSelected = ref(false);
+            watch(
+                () => selectedFiles.value,
+                (value) => {
+                    isAllSelected.value = value.length === sortedFiles.value.length && sortedFiles.value.length > 0;
+                },
+                { immediate: true }
+            );
+            const selectAll = ref(false);
+            const searchKeyword = ref('');
+            const loading = ref(false);
+            const viewMode = ref('list'); // 'list' or 'grid'
 
-            // 新增：创建文件夹逻辑
-            const createFolder = async () => {
-                if (!newFolderName.value) return;
+            // 存储信息
+            const usedStorage = ref(0);
+            const totalStorage = ref(1073741824); // 1GB 默认
+
+            // 对话框控制
+            const showUploadDialog = ref(false);
+            const showShareDialog = ref(false);
+            const showCreateFolderDialog = ref(false);
+            const showRenameDialog = ref(false);
+            const showMoveDialog = ref(false);
+            const shareInfo = ref(null);
+            const shareLink = ref('');
+            const shareExpiry = ref('');
+            const shareFileName = ref('');
+            const newFolderName = ref('');
+            const newFileName = ref('');
+            const creatingFolder = ref(false);
+            const renaming = ref(false);
+            const moving = ref(false);
+            const moveTargetId = ref(0);
+            const folderList = ref([]);
+            const currentMoveFile = ref(null);
+
+            // 上传相关
+            const fileInput = ref(null);
+            const dragOver = ref(false);
+            const uploadQueue = ref([]);
+            const uploading = ref(false);
+
+            // 右键菜单
+            const contextMenu = reactive({
+                visible: false,
+                x: 0,
+                y: 0,
+                file: null
+            });
+
+            // ==================== 计算属性 ====================
+            const storagePercent = computed(() => {
+                return Math.min(Math.round((usedStorage.value / totalStorage.value) * 100), 100);
+            });
+
+            const sortedFiles = computed(() => {
+                let result = files.value;
+                if (searchKeyword.value) {
+                    const keyword = searchKeyword.value.toLowerCase();
+                    result = result.filter(f => f.originalFileName.toLowerCase().includes(keyword));
+                }
+                // 文件夹优先，然后按名称排序
+                return result.sort((a, b) => {
+                    if (a.isFolder !== b.isFolder) return b.isFolder - a.isFolder;
+                    return a.originalFileName.localeCompare(b.originalFileName);
+                });
+            });
+
+            // 预览对话框状态
+            const showPreviewDialog = ref(false);
+            const previewUrl = ref('');
+
+            // 回收站相关
+            const showRecycleBin = ref(false);
+            const recycleBinFiles = ref([]);
+            const selectedRecycleBinFiles = ref([]);
+            // ==================== 生命周期 ====================
+            onMounted(() => {
+                checkLoginStatus();
+                document.addEventListener('click', hideContextMenu);
+                document.addEventListener('keydown', handleKeyDown);
+                window.addEventListener('popstate', handlePopState);
+            });
+
+            onUnmounted(() => {
+                document.removeEventListener('click', hideContextMenu);
+                document.removeEventListener('keydown', handleKeyDown);
+                window.removeEventListener('popstate', handlePopState);
+                if (countdownTimer) clearInterval(countdownTimer);
+            });
+
+            // ==================== 初始化 ====================
+const checkLoginStatus = async () => {
+    const savedToken = localStorage.getItem('webtable_token');
+    const savedUser = localStorage.getItem('webtable_user');
+    if (savedToken && savedUser) {
+        try {
+            const user = JSON.parse(savedUser);
+            token = savedToken;
+            Object.assign(userInfo, { 
+                username: user.username, 
+                id: user.id,
+                volume: user.volume,
+                totalVolume: user.totalVolume
+            });
+            isLoggedIn.value = true;
+            await loadFiles();
+            // 设置已用空间
+            usedStorage.value = user.volume;
+            // 设置总空间
+            totalStorage.value = user.totalVolume || 1073741824; // 如果totalVolume为0或undefined，则使用默认值1GB
+            // 设置初始历史状态，使浏览器后退按钮能在应用内导航
+            history.replaceState({ folderId: currentFolderId.value }, '', '');
+        } catch (e) {
+            localStorage.removeItem('webtable_token');
+            localStorage.removeItem('webtable_user');
+        }
+    }
+};
+
+            let token = '';
+
+            // ==================== 认证相关 ====================
+const handleLogin = async () => {
+    if (!loginForm.userName.trim()) {
+        ElMessage.warning('请输入用户名');
+        return;
+    }
+    if (!loginForm.password) {
+        ElMessage.warning('请输入密码');
+        return;
+    }
+    loginLoading.value = true;
+    try {
+        const response = await api.post('/login', loginForm);
+        if (response.data.code === 200) {
+            const data = response.data.data;
+            token = data.token;
+            Object.assign(userInfo, { 
+                username: data.username, 
+                id: data.id,
+                volume: data.volume,
+                totalVolume: data.totalVolume
+            });
+            isLoggedIn.value = true;
+            localStorage.setItem('webtable_token', token);
+            localStorage.setItem('webtable_user', JSON.stringify({ 
+                username: data.username, 
+                id: data.id,
+                volume: data.volume,
+                totalVolume: data.totalVolume
+            }));
+            ElMessage.success('登录成功，正在跳转到主页...');
+            await loadFiles();
+            // 设置已用空间
+            usedStorage.value = data.volume;
+            // 设置总空间
+            totalStorage.value = data.totalVolume || 1073741824; // 如果totalVolume为0或undefined，则使用默认值1GB
+            history.replaceState({ folderId: currentFolderId.value }, '', '');
+        } else {
+            ElMessage.error(response.data.msg || '登录失败，请检查用户名和密码');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        ElMessage.error(error.response?.data?.msg || '登录失败，请检查网络连接');
+    } finally {
+        loginLoading.value = false;
+    }
+};
+
+            const sendCode = async () => {
+                if (!registerForm.userName.trim()) {
+                    ElMessage.warning('请输入用户名');
+                    return;
+                }
+                if (!registerForm.email.trim()) {
+                    ElMessage.warning('请输入邮箱');
+                    return;
+                }
+                if (!registerForm.password) {
+                    ElMessage.warning('请输入密码');
+                    return;
+                }
+                // 验证密码格式
+                const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,20}$/;
+                if (!pwdRegex.test(registerForm.password)) {
+                    ElMessage.warning('密码必须包含大小写字母和数字，长度 8-20 位');
+                    return;
+                }
                 try {
-                    await axiosInstance.post('/Mydisk/mkdir', null, {
-                        params: { fileName: newFolderName.value, parentId: parentId.value },
-                        headers: { token: token.value }
-                    });
-                    alert("创建成功");
-                    newFolderName.value = '';
-                    fetchFiles();
-                } catch (e) { alert("创建失败"); }
+                    const response = await api.post('/getCode', registerForm);
+                    if (response.data.code === 200) {
+                        ElMessage.success('验证码已发送到您的邮箱');
+                        codeDisabled.value = true;
+                        countdown.value = 60;
+                        countdownTimer = setInterval(() => {
+                            countdown.value--;
+                            if (countdown.value <= 0) {
+                                clearInterval(countdownTimer);
+                                codeDisabled.value = false;
+                            }
+                        }, 1000);
+                    } else {
+                        ElMessage.error(response.data.msg || '发送验证码失败');
+                    }
+                } catch (error) {
+                    console.error('Send code error:', error);
+                    ElMessage.error(error.response?.data?.msg || '发送验证码失败，请检查网络连接');
+                }
             };
 
-            const findFile = async ()=>{if(!storeLink.value)return;const res=await axiosInstance.get('/Mydisk/getlinkinfo',{params:{link:storeLink.value},headers:{token:token.value}});res.data.code===1&&(files.value=[res.data.data],isShareView.value=true)}
-            const exitShareView = ()=>{isShareView.value=false;fetchFiles()}
-            const handleSuccess = ()=>{alert('上传成功');fetchFiles()}
-            const download = (id)=>window.open(`${BASE_URL}/Mydisk/download/?fileId=${id}&token=${token.value}`)
-            const preview = (id)=>window.open(`${BASE_URL}/Mydisk/preview/${id}?token=${token.value}`)
-            const del = async (id)=>{if(!confirm('确定删除？'))return;await axiosInstance.delete('/Mydisk/delete',{data:[id],headers:{token:token.value}});fetchFiles()}
-            const enterFolder = (id,name)=>{historyStack.value.push({id:parentId.value,name:currentFolderName.value});parentId.value=id;currentFolderName.value=name;fetchFiles()}
-            const goBack = ()=>{if(historyStack.value.length>0){const prev=historyStack.value.pop();parentId.value=prev.id;currentFolderName.value=prev.name;fetchFiles()}}
-            const goHome = ()=>{parentId.value=0;currentFolderName.value='';historyStack.value=[];isShareView.value=false;fetchFiles()}
-            const logout = ()=>{token.value='';localStorage.removeItem('token');location.reload()}
-            const formatSize = (b)=>b?(b/1024).toFixed(1)+'KB':'--'
+            const handleRegister = async () => {
+                if (!registerForm.userName.trim()) {
+                    ElMessage.warning('请输入用户名');
+                    return;
+                }
+                if (!registerForm.email.trim()) {
+                    ElMessage.warning('请输入邮箱');
+                    return;
+                }
+                if (!registerForm.password) {
+                    ElMessage.warning('请输入密码');
+                    return;
+                }
+                const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,20}$/;
+                if (!pwdRegex.test(registerForm.password)) {
+                    ElMessage.warning('密码必须包含大小写字母和数字，长度 8-20 位');
+                    return;
+                }
+                if (!registerCode.value.trim()) {
+                    ElMessage.warning('请输入验证码');
+                    return;
+                }
+                registerLoading.value = true;
+                try {
+                    const response = await api.post(`/register?code=${registerCode.value}`, registerForm);
+                    if (response.data.code === 200) {
+                        ElMessage.success('注册成功！正在跳转到登录页面...');
+                        // 清空注册表单
+                        Object.assign(registerForm, { userName: '', email: '', password: '' });
+                        registerCode.value = '';
+                        // 延迟切换到登录页
+                        setTimeout(() => {
+                            activeTab.value = 'login';
+                        }, 1000);
+                    } else {
+                        ElMessage.error(response.data.msg || '注册失败');
+                    }
+                } catch (error) {
+                    console.error('Register error:', error);
+                    ElMessage.error(error.response?.data?.msg || '注册失败，请检查网络连接');
+                } finally {
+                    registerLoading.value = false;
+                }
+            };
 
-            token.value&&fetchFiles()
-            // 记得把新增加的变量和方法 return 出去
-            return {token,form,regiForm,showRegi,files,storeLink,isShareView,parentId,currentFolderName,newFolderName,login,register,share,createFolder,findFile,exitShareView,handleSuccess,download,preview,del,enterFolder,goBack,goHome,logout,formatSize,BASE_URL}
+            const handleLogout = async () => {
+                try {
+                    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    });
+                    await api.post('/logout');
+                } catch (error) {
+                    if (error !== 'cancel') {
+                        console.error('Logout error:', error);
+                    }
+                    return;
+                }
+                token = '';
+                isLoggedIn.value = false;
+                Object.assign(userInfo, { username: '', id: null });
+                localStorage.removeItem('webtable_token');
+                localStorage.removeItem('webtable_user');
+                files.value = [];
+                currentFolderId.value = 0;
+                currentPath.value = [];
+                selectedFiles.value = [];
+            };
+
+            // ==================== 文件管理 ====================
+const loadFiles = async (parentId = null) => {
+    const targetParentId = parentId !== null ? parentId : currentFolderId.value;
+    loading.value = true;
+    try {
+        const response = await api.get('/select', {
+            params: {
+                originalFileName: '',
+                page: 1,
+                number: 1000,
+                parentId: targetParentId
+            }
+        });
+        if (response.data.code === 200) {
+            files.value = response.data.data?.files || [];
+            // 更新面包屑
+            if (targetParentId === 0) {
+                currentPath.value = [];
+            } else {
+                updateBreadcrumb(targetParentId);
+            }
+            currentFolderId.value = targetParentId;
+            selectedFiles.value = [];
+            selectAll.value = false;
+            // 更新文件夹列表
+            folderList.value = files.value.filter(f => f.isFolder === 1);
+            // 不再计算已用空间，因为已经在登录时设置了
         }
-    })
+    } catch (error) {
+        console.error('Load files error:', error);
+    } finally {
+        loading.value = false;
+    }
+};
 
-    app.use(ElementPlus)
-    app.mount('#app')
+            const updateBreadcrumb = async (folderId) => {
+                // 简化版：只显示当前文件夹
+                const folder = files.value.find(f => f.id === folderId);
+                if (folder) {
+                    currentPath.value = [{ id: folderId, name: folder.originalFileName }];
+                }
+            };
+
+            const navigateToFolder = (folderId) => {
+                // 记录浏览历史，使浏览器后退按钮能返回上一级
+                history.pushState({ folderId }, '', '');
+                loadFiles(folderId);
+            };
+
+            const goBack = () => {
+                // 现在由浏览器后退功能处理，此方法保留以便兼容可能的外部调用
+                history.back();
+            };
+
+            const handleFileClick = (file) => {
+                if (file.isFolder === 1) {
+                    navigateToFolder(file.id);
+                }
+            };
+
+            const handleSearch = () => {
+                // 搜索功能通过计算属性实现
+            };
+
+            const handleRefresh = () => {
+                loadFiles();
+            };
+
+            const handleSelectAll = (val) => {
+                if (val) {
+                    selectedFiles.value = sortedFiles.value.map(f => f.id);
+                } else {
+                    selectedFiles.value = [];
+                }
+            };
+
+            // ==================== 文件操作 ====================
+            const handleDownload = (file) => {
+                const url = `http://localhost:8080/Mydisk/download/?fileId=${file.id}&parentId=${currentFolderId.value}&token=${token}`;
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = file.originalFileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                ElMessage.success('开始下载');
+            };
+
+            const handlePreview = (file) => {
+                const url = `http://localhost:8080/Mydisk/preview?fileId=${file.id}&token=${token}`;
+                window.open(url, '_blank');
+            };
+
+            const handleShare = async (file) => {
+                try {
+                    const response = await api.post('/share', null, {
+                        params: { fileId: file.id }
+                    });
+                    if (response.data.code === 200) {
+                        const data = response.data.data;
+                        shareInfo.value = data;
+                        shareLink.value = `http://localhost:8080/Mydisk/store/${data.linkName}`;
+                        shareExpiry.value = formatDateTime(data.loseTime);
+                        shareFileName.value = file.originalFileName;
+                        showShareDialog.value = true;
+                    }
+                } catch (error) {
+                    console.error('Share error:', error);
+                }
+            };
+
+            const copyShareLink = () => {
+                navigator.clipboard.writeText(shareLink.value).then(() => {
+                    ElMessage.success('链接已复制到剪贴板');
+                }).catch(() => {
+                    ElMessage.error('复制失败，请手动复制');
+                });
+            };
+
+            const handleDelete = async (file) => {
+                try {
+                    await ElMessageBox.confirm(`确定要删除 "${file.originalFileName}" 吗？`, '确认删除', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    });
+                    await api.delete('/delete', { data: [file.id] });
+                    ElMessage.success('删除成功');
+                    loadFiles();
+                } catch (error) {
+                    if (error !== 'cancel') {
+                        console.error('Delete error:', error);
+                    }
+                }
+            };
+
+            const handleBatchDelete = async () => {
+                if (selectedFiles.value.length === 0) return;
+                try {
+                    await ElMessageBox.confirm(`确定要删除选中的 ${selectedFiles.value.length} 个文件/文件夹吗？`, '确认删除', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    });
+                    await api.delete('/delete', { data: selectedFiles.value });
+                    ElMessage.success('删除成功');
+                    selectedFiles.value = [];
+                    loadFiles();
+                } catch (error) {
+                    if (error !== 'cancel') {
+                        console.error('Batch delete error:', error);
+                    }
+                }
+            };
+
+            const confirmCreateFolder = async () => {
+                if (!newFolderName.value.trim()) {
+                    ElMessage.warning('请输入文件夹名称');
+                    return;
+                }
+                creatingFolder.value = true;
+                try {
+                    await api.post('/mkdir', null, {
+                        params: {
+                            fileName: newFolderName.value,
+                            parentId: currentFolderId.value
+                        }
+                    });
+                    ElMessage.success('文件夹创建成功');
+                    showCreateFolderDialog.value = false;
+                    loadFiles();
+                } catch (error) {
+                    console.error('Create folder error:', error);
+                } finally {
+                    creatingFolder.value = false;
+                }
+            };
+
+            const handleRename = (file) => {
+                // 获取文件名不含扩展名的部分
+                let fileName = file.originalFileName;
+                let lastDotIndex = fileName.lastIndexOf('.');
+                let baseName = lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
+                newFileName.value = baseName;
+                currentMoveFile.value = file;
+                showRenameDialog.value = true;
+            };
+
+            const confirmRename = async () => {
+                if (!newFileName.value.trim()) {
+                    ElMessage.warning('请输入文件名');
+                    return;
+                }
+                // 获取原文件名不含扩展名的部分进行比较
+                let originalFileName = currentMoveFile.value.originalFileName;
+                let lastDotIndex = originalFileName.lastIndexOf('.');
+                let originalBaseName = lastDotIndex > 0 ? originalFileName.substring(0, lastDotIndex) : originalFileName;
+                if (newFileName.value === originalBaseName) {
+                    showRenameDialog.value = false;
+                    return;
+                }
+                renaming.value = true;
+                try {
+                    await api.get('/rename', {
+                        params: {
+                            fileId: currentMoveFile.value.id,
+                            fileName: newFileName.value
+                        }
+                    });
+                    ElMessage.success('重命名成功');
+                    showRenameDialog.value = false;
+                    loadFiles();
+                } catch (error) {
+                    console.error('Rename error:', error);
+                } finally {
+                    renaming.value = false;
+                }
+            };
+
+            const showMoveFileDialog = (file) => {
+                currentMoveFile.value = file;
+                moveTargetId.value = 0;
+                showMoveDialog.value = true;
+            };
+
+            const confirmMove = async () => {
+                moving.value = true;
+                try {
+                    await api.post('/move', null, {
+                        params: {
+                            fileId: currentMoveFile.value.id,
+                            parentId: moveTargetId.value
+                        }
+                    });
+                    ElMessage.success('移动成功');
+                    showMoveDialog.value = false;
+                    loadFiles();
+                } catch (error) {
+                    console.error('Move error:', error);
+                } finally {
+                    moving.value = false;
+                }
+            };
+
+            // ==================== 文件上传 ====================
+            const triggerFileInput = () => {
+                fileInput.value?.click();
+            };
+
+            const handleFileSelect = (event) => {
+                const selectedFiles = Array.from(event.target.files);
+                addFilesToQueue(selectedFiles);
+                event.target.value = '';
+            };
+
+            const handleDrop = (event) => {
+                dragOver.value = false;
+                const droppedFiles = Array.from(event.dataTransfer.files);
+                addFilesToQueue(droppedFiles);
+            };
+
+            const addFilesToQueue = (fileList) => {
+                for (const file of fileList) {
+                    if (file.size > 100 * 1024 * 1024) {
+                        ElMessage.warning(`文件 ${file.name} 超过 100MB 限制`);
+                        continue;
+                    }
+                    uploadQueue.value.push({
+                        file: file,
+                        progress: 0,
+                        status: 'pending',
+                        statusText: '等待中'
+                    });
+                }
+                if (fileList.length > 0 && !showUploadDialog.value) {
+                    showUploadDialog.value = true;
+                }
+            };
+
+            const clearUploadQueue = () => {
+                if (!uploading.value) {
+                    uploadQueue.value = [];
+                }
+            };
+
+            const startUpload = async () => {
+                if (uploadQueue.value.length === 0 || uploading.value) return;
+                uploading.value = true;
+
+                const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per chunk
+
+                for (let i = 0; i < uploadQueue.value.length; i++) {
+                    const item = uploadQueue.value[i];
+                    if (item.status === 'success' || item.status === 'error') continue;
+
+                    try {
+                        item.status = 'checking';
+                        item.statusText = '检查中...';
+                        item.progress = 0;
+
+                        // 计算文件 MD5（简化版，实际应使用 spark-md5 等库）
+                        const md5 = await calculateMD5(item.file);
+                        const totalChunks = Math.ceil(item.file.size / CHUNK_SIZE);
+
+                        // 检查文件
+                        const checkResponse = await api.post('/upload/check', {
+                            md5: md5,
+                            fileName: item.file.name,
+                            fileSize: item.file.size,
+                            totalChunks: totalChunks,
+                            taskId: null
+                        });
+
+                        if (checkResponse.data.code === 200) {
+                            const checkResult = checkResponse.data.data;
+
+                            if (checkResult.exist) {
+                                // 秒传
+                                item.status = 'merging';
+                                item.statusText = '秒传中...';
+                                item.progress = 100;
+
+                                await api.post('/upload/merger', checkResult, {
+                                    params: { parentId: currentFolderId.value }
+                                });
+
+                                item.status = 'success';
+                                item.statusText = '完成';
+                            } else {
+                                // 分片上传
+                                const taskId = checkResult.taskId;
+                                const uploadedChunks = checkResult.uploadedChunks || [];
+
+                                for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                                    // 后端索引从 0 开始，uploadedChunks 也是从 0 开始
+                                    if (uploadedChunks.includes(chunkIndex)) {
+                                        continue; // 已上传的分片跳过
+                                    }
+
+                                    const start = chunkIndex * CHUNK_SIZE;
+                                    const end = Math.min(start + CHUNK_SIZE, item.file.size);
+                                    const chunk = item.file.slice(start, end);
+
+                                    const formData = new FormData();
+                                    formData.append('file', chunk);
+                                    formData.append('taskId', taskId);
+                                    formData.append('index', chunkIndex);
+
+                                    await api.post('/upload/chunk', formData, {
+                                        headers: { 'Content-Type': 'multipart/form-data' },
+                                        onUploadProgress: (progressEvent) => {
+                                            const chunkProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                                            item.progress = Math.round(((chunkIndex + chunkProgress / 100) / totalChunks) * 90);
+                                        }
+                                    });
+                                }
+
+                                // 合并文件
+                                item.status = 'merging';
+                                item.statusText = '合并中...';
+                                item.progress = 95;
+
+                                await api.post('/upload/merger', checkResult, {
+                                    params: { parentId: currentFolderId.value }
+                                });
+
+                                item.progress = 100;
+                                item.status = 'success';
+                                item.statusText = '完成';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Upload error:', error);
+                        item.status = 'error';
+                        item.statusText = '失败';
+                    }
+                }
+
+                uploading.value = false;
+                ElMessage.success('上传完成');
+                loadFiles();
+
+                // 3 秒后清除成功和失败的记录
+                setTimeout(() => {
+                    uploadQueue.value = uploadQueue.value.filter(item => item.status === 'pending');
+                    if (uploadQueue.value.length === 0) {
+                        showUploadDialog.value = false;
+                    }
+                }, 3000);
+            };
+
+            // 使用 spark-md5 计算真正的文件 MD5
+            const calculateMD5 = (file) => {
+                return new Promise((resolve, reject) => {
+                    const chunkSize = 2 * 1024 * 1024; // 2MB per chunk for MD5 calculation
+                    const chunks = Math.ceil(file.size / chunkSize);
+                    const spark = new SparkMD5.ArrayBuffer();
+                    const fileReader = new FileReader();
+                    let currentChunk = 0;
+
+                    fileReader.onload = (e) => {
+                        spark.append(e.target.result);
+                        currentChunk++;
+
+                        if (currentChunk < chunks) {
+                            loadNext();
+                        } else {
+                            // 所有分片读取完成，计算最终 MD5
+                            const md5 = spark.end();
+                            resolve(md5);
+                        }
+                    };
+
+                    fileReader.onerror = (e) => {
+                        reject(new Error('文件读取失败'));
+                    };
+
+                    const loadNext = () => {
+                        const start = currentChunk * chunkSize;
+                        const end = Math.min(start + chunkSize, file.size);
+                        fileReader.readAsArrayBuffer(file.slice(start, end));
+                    };
+
+                    loadNext();
+                });
+            };
+
+            // ==================== 右键菜单 ====================
+            const showContextMenu = (event, file) => {
+                event.preventDefault();
+                contextMenu.visible = true;
+                contextMenu.x = event.clientX;
+                contextMenu.y = event.clientY;
+                contextMenu.file = file;
+
+                // 确保菜单不超出屏幕
+                nextTick(() => {
+                    const menuEl = document.querySelector('.context-menu');
+                    if (menuEl) {
+                        const rect = menuEl.getBoundingClientRect();
+                        if (rect.right > window.innerWidth) {
+                            contextMenu.x = window.innerWidth - rect.width - 10;
+                        }
+                        if (rect.bottom > window.innerHeight) {
+                            contextMenu.y = window.innerHeight - rect.height - 10;
+                        }
+                    }
+                });
+            };
+
+            const hideContextMenu = () => {
+                contextMenu.visible = false;
+            };
+
+            // ==================== 键盘事件 ====================
+            const handleKeyDown = (event) => {
+                if (event.key === 'Delete' && selectedFiles.value.length > 0) {
+                    handleBatchDelete();
+                }
+                if (event.key === 'a' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    selectAll.value = true;
+                    selectedFiles.value = sortedFiles.value.map(f => f.id);
+                }
+            };
+
+            // 处理浏览器前进/后退
+            const handlePopState = (event) => {
+                if (event.state && event.state.folderId !== undefined) {
+                    loadFiles(event.state.folderId);
+                } else {
+                    // 无历史状态时默认回到根目录
+                    loadFiles(0);
+                }
+            };
+
+            // ==================== 回收站功能 ====================
+const loadRecycleBin = async () => {
+    try {
+        const response = await api.post('/recycleBin/selectall');
+        if (response.data.code === 200) {
+            recycleBinFiles.value = response.data.data || [];
+        }
+    } catch (error) {
+        console.error('Load recycle bin error:', error);
+    }
+};
+
+            const handleRestore = async (file) => {
+                try {
+                    await ElMessageBox.confirm(`确定要恢复 "${file.originalFileName}" 吗？`, '确认恢复', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    });
+                    // ✅ 修改这一行
+                    await api.post('/recycleBin/goback', null, {
+                        params: new URLSearchParams([['fileIds', file.id]])
+                    });
+                    ElMessage.success('恢复成功');
+                    loadRecycleBin();
+                } catch (error) {
+                    if (error !== 'cancel') {
+                        console.error('Restore error:', error);
+                    }
+                }
+            };
+
+            const handleRestoreBatch = async () => {
+                if (selectedRecycleBinFiles.value.length === 0) return;
+                try {
+                    await ElMessageBox.confirm(`确定要恢复选中的 ${selectedRecycleBinFiles.value.length} 个文件吗？`, '确认恢复', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    });
+                    // ✅ 修改这一行
+                    await api.post('/recycleBin/goback', null, {
+                        params: new URLSearchParams(selectedRecycleBinFiles.value.map(id => ['fileIds', id]))
+                    });
+                    ElMessage.success('恢复成功');
+                    selectedRecycleBinFiles.value = [];
+                    loadRecycleBin();
+                } catch (error) {
+                    if (error !== 'cancel') {
+                        console.error('Batch restore error:', error);
+                    }
+                }
+            };
+
+            const handlePermanentlyDelete = async (file) => {
+                try {
+                    await ElMessageBox.confirm(`确定要永久删除 "${file.originalFileName}" 吗？此操作不可恢复！`, '确认删除', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    });
+                    await api.post('/recycleBin/delete', null, {
+                        params: { fileIds: [file.id] }
+                    });
+                    ElMessage.success('删除成功');
+                    loadRecycleBin();
+                } catch (error) {
+                    if (error !== 'cancel') {
+                        console.error('Delete error:', error);
+                    }
+                }
+            };
+
+            const handlePermanentlyDeleteBatch = async () => {
+                if (selectedRecycleBinFiles.value.length === 0) return;
+                try {
+                    await ElMessageBox.confirm(`确定要永久删除选中的 ${selectedRecycleBinFiles.value.length} 个文件吗？此操作不可恢复！`, '确认删除', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    });
+                    await api.post('/recycleBin/delete', null, {
+                        params: { fileIds: selectedRecycleBinFiles.value }
+                    });
+                    ElMessage.success('删除成功');
+                    selectedRecycleBinFiles.value = [];
+                    loadRecycleBin();
+                } catch (error) {
+                    if (error !== 'cancel') {
+                        console.error('Batch delete error:', error);
+                    }
+                }
+            };
+
+            const clearRecycleBin = async () => {
+                if (recycleBinFiles.value.length === 0) {
+                    ElMessage.warning('回收站为空');
+                    return;
+                }
+                try {
+                    await ElMessageBox.confirm(`确定要清空回收站吗？所有文件将被永久删除！`, '确认清空', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    });
+                    await api.delete('/clear');
+                    ElMessage.success('回收站已清空');
+                    loadRecycleBin();
+                } catch (error) {
+                    if (error !== 'cancel') {
+                        console.error('Clear recycle bin error:', error);
+                    }
+                }
+            };
+
+            const toggleRecycleBinSelection = (id) => {
+                const index = selectedRecycleBinFiles.value.indexOf(id);
+                if (index === -1) {
+                    selectedRecycleBinFiles.value.push(id);
+                } else {
+                    selectedRecycleBinFiles.value.splice(index, 1);
+                }
+            };
+
+            const isAllRecycleBinSelected = computed(() => {
+                return selectedRecycleBinFiles.value.length === recycleBinFiles.value.length && recycleBinFiles.value.length > 0;
+            });
+
+            const handleSelectAllRecycleBin = (val) => {
+                if (val) {
+                    selectedRecycleBinFiles.value = recycleBinFiles.value.map(f => f.id);
+                } else {
+                    selectedRecycleBinFiles.value = [];
+                }
+            };
+
+            // ==================== 工具函数 ====================
+            const getFileIcon = (filename) => {
+                if (!filename) return '📎';
+                const ext = filename.split('.').pop().toLowerCase();
+                const iconMap = {
+                    // 图片
+                    jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', bmp: '🖼️', webp: '🖼️', svg: '🖼️',
+                    // 文档
+                    pdf: '📄', txt: '📝', md: '📝', json: '📋', xml: '📋', doc: '📄', docx: '📄',
+                    // 表格
+                    xls: '📊', xlsx: '📊', csv: '📊',
+                    // 演示文稿
+                    ppt: '📑', pptx: '📑',
+                    // 音频
+                    mp3: '🎵', wav: '🎵', flac: '🎵', aac: '🎵', ogg: '🎵',
+                    // 视频
+                    mp4: '🎬', avi: '🎬', mkv: '🎬', mov: '🎬', wmv: '🎬', flv: '🎬', webm: '🎬',
+                    // 压缩文件
+                    zip: '📦', rar: '📦', '7z': '📦', tar: '📦', gz: '📦',
+                    // 代码
+                    js: '💻', ts: '💻', py: '💻', java: '💻', c: '💻', cpp: '💻', html: '💻', css: '💻',
+                    // 其他
+                    exe: '⚙️', dmg: '💿', iso: '💿'
+                };
+                return iconMap[ext] || '📎';
+            };
+
+            const formatSize = (bytes) => {
+                if (!bytes || bytes === 0) return '0 B';
+                const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+                let i = 0;
+                let size = bytes;
+                while (size >= 1024 && i < units.length - 1) {
+                    size /= 1024;
+                    i++;
+                }
+                return size.toFixed(i > 0 ? 2 : 0) + ' ' + units[i];
+            };
+
+            const formatDate = (dateStr) => {
+                if (!dateStr) return '-';
+                try {
+                    const date = new Date(dateStr);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    return `${year}-${month}-${day} ${hours}:${minutes}`;
+                } catch (e) {
+                    return dateStr;
+                }
+            };
+
+            const formatDateTime = (dateStr) => {
+                if (!dateStr) return '-';
+                try {
+                    const date = new Date(dateStr);
+                    return date.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (e) {
+                    return dateStr;
+                }
+            };
+
+            return {
+                // 状态
+                isLoggedIn,
+                userInfo,
+                activeTab,
+                globalLoading,
+                loginForm,
+                registerForm,
+                registerCode,
+                loginLoading,
+                registerLoading,
+                codeDisabled,
+                countdown,
+                files,
+                currentFolderId,
+                currentPath,
+                selectedFiles,
+                selectAll,
+                searchKeyword,
+                loading,
+                viewMode,
+                usedStorage,
+                totalStorage,
+                storagePercent,
+                // 对话框
+                showUploadDialog,
+                showShareDialog,
+                showCreateFolderDialog,
+                showRenameDialog,
+                showMoveDialog,
+                shareInfo,
+                shareLink,
+                shareExpiry,
+                shareFileName,
+                newFolderName,
+                newFileName,
+                creatingFolder,
+                renaming,
+                moving,
+                moveTargetId,
+                folderList,
+                currentMoveFile,
+                // 上传
+                fileInput,
+                dragOver,
+                uploadQueue,
+                uploading,
+                // 右键菜单
+                contextMenu,
+                // 计算属性
+                sortedFiles,
+                toggleSelection,
+                isAllSelected,
+                // 方法
+                handleLogin,
+                sendCode,
+                handleRegister,
+                handleLogout,
+                loadFiles,
+                navigateToFolder,
+                goBack,
+                handleFileClick,
+                handleSearch,
+                handleRefresh,
+                handleSelectAll,
+                handleDownload,
+                handlePreview,
+                handleShare,
+                copyShareLink,
+                handleDelete,
+                handleBatchDelete,
+                confirmCreateFolder,
+                handleRename,
+                confirmRename,
+                showMoveFileDialog,
+                confirmMove,
+                triggerFileInput,
+                handleFileSelect,
+                handleDrop,
+                startUpload,
+                clearUploadQueue,
+                showContextMenu,
+                hideContextMenu,
+                getFileIcon,
+                formatSize,
+                formatDate,
+                formatDateTime,
+                handleKeyDown,
+                // 回收站相关
+                showRecycleBin,
+                recycleBinFiles,
+                selectedRecycleBinFiles,
+                loadRecycleBin,
+                handleRestore,
+                handleRestoreBatch,
+                handlePermanentlyDelete,
+                handlePermanentlyDeleteBatch,
+                clearRecycleBin,
+                toggleRecycleBinSelection,
+                isAllRecycleBinSelected,
+                handleSelectAllRecycleBin
+            };
+        }
+    }).use(ElementPlus).mount('#app');
 </script>
 </body>
 </html>

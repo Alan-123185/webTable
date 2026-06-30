@@ -3,8 +3,6 @@ package com.xushu.webtable.common;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.time.LocalDateTime;
 
 @Data
@@ -19,8 +17,10 @@ public class File {
     private LocalDateTime createTime;
     private Long fileSize;
     private Integer refCount;       // 引用次数
-    private Integer parentId;
+    private Integer parentId;       // 父目录ID
     private Integer isFolder;
+    // File.java 新增
+
 
     public File(String fileName,String originalFileName, Integer userId, Long fileSize, String path, LocalDateTime now,Integer parentId,Integer isFolder) {
         this.fileName=fileName;
