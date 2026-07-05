@@ -32,10 +32,10 @@ public class filecontroller {
     @GetMapping("/select")
     @Role(value = {Const.ROLE_ADMIN, Const.ROLE_USER})
     @Operation(summary  = "根据文件名查询文件", description = "返回一个selectFileBean对象")
-    public Result select(@RequestParam(defaultValue = "") String originalFileName,
-                         @RequestParam(defaultValue = Const.FILE_QUERY_DEFAULT_PAGE+"") int page,
-                         @RequestParam(defaultValue = Const.FILE_QUERY_DEFAULT_SIZE+"") int number,
-                         @RequestParam(defaultValue = Const.PARENT_ID_ROOT+"") int parentId){
+    public Result select(@Parameter(description = "文件名")@RequestParam(defaultValue = "") String originalFileName,
+                         @Parameter(description = "页码")@RequestParam(defaultValue = Const.FILE_QUERY_DEFAULT_PAGE+"") int page,
+                         @Parameter(description = "每页数量")@RequestParam(defaultValue = Const.FILE_QUERY_DEFAULT_SIZE+"") int number,
+                         @Parameter(description = "父级id")@RequestParam(defaultValue = Const.PARENT_ID_ROOT+"") int parentId){
         selectFileBean files = fileservice.select(originalFileName, CurrentHolder.get(), page, number,parentId);
         log.info("{}查询",originalFileName);
         return success(files);
@@ -50,6 +50,16 @@ public class filecontroller {
         fileservice.softdelete(ids);
         return Result.success();
     }
+
+    @Log(value="管理员强制删除任意文件",operationType = Log.OperationType.DELETE)
+    @Role(value = {Const.ROLE_ADMIN})
+    @Operation(summary = "管理员强制删除任意文件", description = "返回一个Integer")
+    @PostMapping("/admin/forcedelete")
+    public Result forceDelete(@Parameter(description = "文件id列表") @RequestBody List<Integer> ids) {
+        fileservice.forceDelete(ids);
+        return Result.success();
+    }
+
     @Log(value="分享文件",operationType = Log.OperationType.SHARE)
     @Role(value = {Const.ROLE_ADMIN, Const.ROLE_USER})
     @Operation(summary = "根据文件id分享文件，生成链接", description = "返回一个shareinfo对象")
@@ -58,6 +68,7 @@ public class filecontroller {
         shareinfo share = fileservice.share(fileId);
         return Result.success(share);
     }
+
     @Log(value="根据链存储文件" ,operationType = Log.OperationType.STORE)
     @Role(value = {Const.ROLE_ADMIN, Const.ROLE_USER})
     @Operation(summary = "根据文件链接存储文件", description = "返回一个Integer")
@@ -157,4 +168,6 @@ public class filecontroller {
         fileservice.rename(fileId, fileName);
         return Result.success(fileName);
     }
+
+
 }

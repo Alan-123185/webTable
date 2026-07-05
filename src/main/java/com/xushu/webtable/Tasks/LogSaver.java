@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
+
+
 @Component
 @Slf4j
 public class LogSaver {
@@ -27,11 +29,14 @@ public class LogSaver {
         List<OperationLog> logs = new ArrayList<>();
         for (int i = 0; i < Const.LOG_MAX_SIZE; i++) {
             // 使用正确的 RedisTemplate 获取 OperationLog 对象
-            OperationLog log = operationLogRedisTemplate.opsForList().leftPop(Const.REDIS_LOG_INFO_KEY_PREFIX);
-            if (log == null) break;
-            if(log.getOperatorId()==null)
-                log.setOperatorId(CurrentHolder.get());
-            logs.add(log);
+            OperationLog log1 = operationLogRedisTemplate.opsForList().leftPop(Const.REDIS_LOG_INFO_KEY_PREFIX);
+            if (log1 == null) break;
+            if (log1.getOperatorId() == null) {
+                log.warn("发现 operatorId 为空的日志: {}", log1);
+                // 不补了，直接往下走让数据库兜底（或跳过）
+                continue;  // 或者直接扔进死信队列
+            }
+            logs.add(log1);
         }
         if (logs.isEmpty()) return;
         try {

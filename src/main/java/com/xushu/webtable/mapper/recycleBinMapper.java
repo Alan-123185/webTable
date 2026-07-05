@@ -12,7 +12,7 @@ import java.util.List;
 @Mapper
 public interface recycleBinMapper {
 
-    void deletebinfile(Integer id);
+    void deletebinfile(List<Integer> ids);
 
     @Select("select count(*) from recycle_bin where file_name=#{fileName}")
     int binfilecount(String fileName);

@@ -10,4 +10,6 @@ public interface loginMapper {
     public User findName(String userName);
     @Select("select * from user where email= #{email}")
     public User findEmail(String email);
+    @Select("select volume from user where id=#{id}")
+    public Long getVolume(Integer id);
 }

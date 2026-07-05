@@ -14,17 +14,22 @@ import java.lang.annotation.Target;
 public @interface Log {
     /**
      * 日志描述信息
+     *
      * @return 描述内容
      */
     String value() default "";
 
     /**
      * 操作类型（如：查询、新增、修改、删除等）
+     *
      * @return 操作类型
      */
-    OperationType operationType() default  OperationType.OTHER;
+    OperationType operationType() default OperationType.OTHER;
+
 
     public enum OperationType {
-        UPLOAD, DOWNLOAD, DELETE,STORE, RENAME,RESTORE, MOVE, LOGIN, REGISTER, SHARE, OTHER ,PREVIEW,LOGOUT,QUERY
+        UPLOAD, DOWNLOAD, DELETE, STORE, RENAME, RESTORE, MOVE, LOGIN, REGISTER, SHARE, OTHER, PREVIEW, LOGOUT, QUERY, UPDATE,
+        BAN, UNBAN, DELETEUSER, QUERYUSER, QUERYALLUSER, QUERYALLFILE, QUERYALLSHARE, QUERYALLRECYCLE, QUERYALLLOG, QUERYALLLOGIN, QUERYALLLOGOUT
     }
+
 }

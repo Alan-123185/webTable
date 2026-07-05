@@ -14,10 +14,8 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 import java.time.Duration;
 
 @Slf4j
@@ -34,36 +32,44 @@ public class logincontroller {
     @Operation(summary = "用户登录",description = "用户登录接口，返回含有登录令牌的info类")
     @PostMapping("/login")
     public Result login(@Parameter(description = "包装好的登录请求类") @Valid @RequestBody LoginRequest loginRequest){
-       LoginResult ret= loginservice.login(loginRequest);
+        //判断是否封号
+       LoginResult ret= loginservice.loginpan(loginRequest);
        Integer res=ret.getCode();
        User user=ret.getUser();
-        if(res== Const.LOGIN_SUCCESS){
-           log.info("用户{}登录成功！",user);
-           String token = jwtUtils.makejwt(user.getUserName(), user.getId(), user.getRole());
-           CurrentHolder.set(user.getId().intValue());
-           logininfo info=new logininfo(user.getUserName(),user.getId(),token,user.getVolume(),user.getAllVolume());
-           redisTemplate.opsForValue().set(Const.REDIS_LOGIN_INFO_KEY_PREFIX+user.getId(),
-                   "1",
-                   Duration.ofHours(Const.REDIS_TOKEN_LOSE_HOURS));
-           return Result.success(info);
-       }
-       if(res== Const.LOGIN_NOT_REGISTERED){
-           log.info("{}未注册！",user);
-           return Result.error("用户未注册");
-       }
-       if(res== Const.LOGIN_PASSWORD_WRONG){
-           log.info("用户名或密码错误！{}",user);
-           return Result.error("用户名或密码错误");
-       }
-       return Result.error("未知错误");
+       return loginservice.login(user,res);
+
     }
+
 
     @Log(value="退出登录",operationType = Log.OperationType.LOGOUT)
     @Role(value ={Const.ROLE_USER,Const.ROLE_ADMIN})
     @Operation(summary = "退出登录",description = "退出登录接口，清除token")
     @PostMapping("/logout")
     public Result logout(){
-        redisTemplate.delete(Const.REDIS_LOGIN_INFO_KEY_PREFIX+ CurrentHolder.get());
-        return Result.success();
+        return loginservice.logout();
     }
+
+    @Log(value="获取最新用户最新存储空间",operationType = Log.OperationType.UPDATE)
+    @Role(value ={Const.ROLE_USER,Const.ROLE_ADMIN})
+    @Operation(summary = "实时获取用户最新存储空间",description = "获取用户的volume字段,同时更新redis把它放进去方便读取")
+    @GetMapping("/updatevolume")
+    public Result updatevolume(){
+        Integer id=CurrentHolder.get();
+        Long volume=loginservice.getVolume(id);
+        return Result.success(volume);
+    }
+
+
+    @Log(value="从缓存里面获取用户的",operationType = Log.OperationType.OTHER)
+    @Role(value ={Const.ROLE_USER,Const.ROLE_ADMIN})
+    @Operation(summary = "从缓存里面获取用户的",description = "从缓存里面获取用户的volume")
+    @GetMapping("/getvolume")
+    public Result getvolume(){
+        Integer id=CurrentHolder.get();
+        Long volume=(Long) redisTemplate.opsForValue().get(Const.REDIS_USER_VOLUME+id);
+        return Result.success(volume);
+    }
+
+
+
 }

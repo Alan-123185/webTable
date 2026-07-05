@@ -12,6 +12,7 @@ public final class Const {
     public static final int LOGIN_SUCCESS = 0;           // 登录成功
     public static final int LOGIN_NOT_REGISTERED = 1;    // 用户未注册
     public static final int LOGIN_PASSWORD_WRONG = 2;    // 密码错误
+    public static final int LOGIN_BANNED = -1;      // 用户被封禁
 
     // ==================== 转存结果码 ====================
     public static final int STORE_SUCCESS = 0;            // 转存成功
@@ -66,6 +67,8 @@ public final class Const {
     public static final String REDIS_FILE_TASK_INFO_KEY="webtable:task:info:";
     public static final String REDIS_DOWNLOAD_LOCK_KEY="webtable:download:lock:";
     public static final String REDIS_LOGIN_INFO_KEY_PREFIX="webtable:login:info:";
+    public static final String REDIS_USER_VOLUME="webtable:user:volume";
+    public static final String REDIS_USER_BANNED = "webtable:user:banned";
 
     // ==================== Redis TTL ====================
     public static final int REDIS_UPLOAD_TTL_HOURS = 24;          // 上传任务缓存小时数
@@ -116,8 +119,9 @@ public final class Const {
     public static final int ROLE_USER = 0;
     public static final int ROLE_GUEST = 1;
 
-    // ===================== 日志操作单次最大次数 ====================
-    public static final int LOG_MAX_SIZE = 100;
+    // ===================== 日志操作相关 ====================
+    public static final int LOG_MAX_SIZE = 100;  //单次最大次数
+    public static final int LOG_CLEAN_PERIOD_MS= 1000 * 60 * 60 * 24;
 
     // ===================== 回收站时间常数 ====================
     public static final int RECYCLE_BIN_EXPIRY_DAYS = 30;
@@ -136,4 +140,22 @@ public final class Const {
     public static final int LOCK_LEASE_TIME_SECONDS = 30;
     public static final int LOCK_RETRY_COUNT = 3;
     public static final int LOCK_RETRY_INTERVAL_MS = 500;
+
+    // ===================== 账号封禁相关=======================
+    public static final int BAN_LEVEL_1 = 1;
+    public static final int BAN_LEVEL_2 = 2;
+    public static final int BAN_LEVEL_3 = 3;
+    public static final int BAN_LEVEL_1_DAYS = 7;
+    public static final int BAN_LEVEL_2_DAYS = 30;
+
+
+    //=======================用户状态码=============================
+    public static final int USER_STATUS_NORMAL=0;
+    public static final int USER_STATUS_BANNED=1;
+
+    //==========================文件状态码=============================
+    public static final int FILE_STATUS_NORMAL = 0;
+    public static final int FILE_STATUS_DELETED =-1;
+    public static final int FILE_STATUS_DELETING = 1;
+
 }

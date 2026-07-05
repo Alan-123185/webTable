@@ -108,74 +108,91 @@ public class uploadServicemake implements uploadService {
      */
     @Override
     public CheckResult check(CheckRequest checkRequest) {
+        // 获取当前用户ID并查询用户信息
         Integer userId = CurrentHolder.get();
         User user = mapper.selectUserById(userId);
+        
+        // 检查用户剩余空间是否足够
         if (user.getVolume() + checkRequest.getFileSize() > volume) {
             throw new ManageException(Const.HTTP_BAD_REQUEST, "剩余空间不足");
         }
-        String md5 = checkRequest.getMd5();
-        String taskid = checkRequest.getTaskId();//如果是全新任务，则为null
-        // 生成随机UUID作为文件ID，并去除连字符
-        String newtaskid = UUID.randomUUID().toString().replace("-", "");
-        Integer totalChunks = checkRequest.getTotalChunks();
-        int ttl = Const.REDIS_UPLOAD_TTL_TIME;
-        String fileKey = Const.REDIS_FILE_MD5_KEY + md5;
-        String taskInfoKey = Const.REDIS_FILE_TASK_INFO_KEY + (taskid != null ? taskid : newtaskid);
-        List<String> keys = Arrays.asList(fileKey, taskInfoKey);
+        
+        // 获取请求参数
+        String md5 = checkRequest.getMd5(); // 文件MD5值
+        String taskid = checkRequest.getTaskId(); // 任务ID(断点续传时不为空)
+        String newtaskid = UUID.randomUUID().toString().replace("-", ""); // 生成新任务ID
+        Integer totalChunks = checkRequest.getTotalChunks(); // 总分片数
+        int ttl = Const.REDIS_UPLOAD_TTL_TIME; // Redis缓存时间
+        
+        // 准备Redis键
+        String fileKey = Const.REDIS_FILE_MD5_KEY + md5; // 文件MD5对应的键
+        String taskInfoKey = Const.REDIS_FILE_TASK_INFO_KEY + (taskid != null ? taskid : newtaskid); // 任务信息键
+        
+        // 准备Lua脚本参数
+        List<String> keys = Arrays.asList(fileKey, taskInfoKey); // Redis键列表
         Object[] args = {
-                md5,                              // ARGV[1]
-                taskid != null ? taskid : "",     // ARGV[2]
-                newtaskid,                        // ARGV[3]
-                String.valueOf(userId),           // ARGV[4]
-                String.valueOf(totalChunks),      // ARGV[5]
-                String.valueOf(ttl)               // ARGV[6]
+                md5,                              // ARGV[1]: 文件MD5
+                taskid != null ? taskid : "",     // ARGV[2]: 原任务ID(如果有)
+                newtaskid,                        // ARGV[3]: 新任务ID
+                String.valueOf(userId),           // ARGV[4]: 用户ID
+                String.valueOf(totalChunks),      // ARGV[5]: 总分片数
+                String.valueOf(ttl)               // ARGV[6]: 缓存时间
         };
+        
+        // 设置Lua脚本
         DefaultRedisScript<List> script = new DefaultRedisScript<>();
-        script.setScriptSource(new ResourceScriptSource(new ClassPathResource("check.lua")));
-        script.setResultType(List.class);
+        script.setScriptSource(new ResourceScriptSource(new ClassPathResource("check.lua"))); // 加载Lua脚本
+        script.setResultType(List.class); // 设置返回类型
+        
+        // 执行Lua脚本并获取结果
         List<String> result = stringredisTemplate.execute(script, keys, args);
+        
+        // 根据Lua脚本返回状态处理不同情况
         switch (result.get(0)) {
-            case Const.LUA_CHECK_FAST:
-                //秒传
-                File existFile1 = mapper.selectByMd5(md5);
+            case Const.LUA_CHECK_FAST: // 秒传情况
+                File existFile1 = mapper.selectByMd5(md5); // 查询已存在文件
                 CheckResult cr = new CheckResult(checkRequest.getMd5(),
                         checkRequest.getFileName(),
                         checkRequest.getTotalChunks(),
-                        true,
+                        true, // 标记为秒传
                         existFile1.getFileSize(),
                         null,
                         null);
                 return cr;
-            case Const.LUA_CHECK_NEW:
+                
+            case Const.LUA_CHECK_NEW: // 新文件上传
                 File existFile2 = mapper.selectByMd5(md5);
-                if(existFile2!=null) {
+                if(existFile2!=null) { // 二次检查文件是否存在(防止并发问题)
                     CheckResult cr1 = new CheckResult(checkRequest.getMd5(),
                             checkRequest.getFileName(),
                             checkRequest.getTotalChunks(),
-                            true,
+                            true, // 标记为秒传
                             existFile2.getFileSize(),
                             null,
                             null);
-                    stringredisTemplate.opsForValue().set(Const.REDIS_FILE_MD5_KEY+md5, Const.LUA_CHECK_DONE,30,TimeUnit.DAYS);
+                    stringredisTemplate.opsForValue().set(Const.REDIS_FILE_MD5_KEY+md5, Const.LUA_CHECK_DONE,30,TimeUnit.DAYS); // 更新Redis状态
                     return cr1;
                 }
-                //新任务
+                // 创建临时目录用于分片上传
                 Path path = Paths.get(pathhead, Const.PATH_TEMP, Const.PATH_UPLOAD, result.get(1));
                 try {
-                    Files.createDirectories(path); // 确保临时目录存在
+                    Files.createDirectories(path); // 创建临时目录
                 } catch (IOException e) {
                     throw new ManageException("临时目录创建失败");
                 }
                 return new CheckResult(checkRequest.getMd5(),
                         checkRequest.getFileName(),
                         checkRequest.getTotalChunks(),
-                        false,
+                        false, // 非秒传
                         checkRequest.getFileSize(),
-                        result.get(1),
+                        result.get(1), // 返回任务ID
                         null);
-            case Const.LUA_CHECK_WAIT:
+                        
+            case Const.LUA_CHECK_WAIT: // 文件正在上传中
                 throw new ManageException(Const.HTTP_ACCEPTED, "文件正在上传中");
-            case Const.LUA_CHECK_RESUME:
+                
+            case Const.LUA_CHECK_RESUME: // 断点续传
+                // 获取已上传的分片列表
                 List<Integer> uploadedChunks = stringredisTemplate
                         .opsForSet()
                         .members(FRONT_KEY + result.get(1)+ ":")
@@ -186,14 +203,15 @@ public class uploadServicemake implements uploadService {
                         checkRequest.getMd5(),
                         checkRequest.getFileName(),
                         checkRequest.getTotalChunks(),
-                        false,
+                        false, // 非秒传
                         checkRequest.getFileSize(),
-                        taskid,
-                        uploadedChunks);
-            default:
+                        taskid, // 原任务ID
+                        uploadedChunks); // 已上传分片列表
+                        
+            default: // 未知状态
                 throw new ManageException("秒传检查异常，未知状态: " + result.get(0));
         }
-        //用Lua脚本保证原子性
+        // Lua脚本保证了检查过程的原子性
     }
 
     /**
@@ -250,11 +268,14 @@ public class uploadServicemake implements uploadService {
             }
             Path path = Paths.get(diskPath);
             String extName=getExtName(checkResult.getOrigfileName());
+            log.info("开始合并分片: taskId={}, fileName={}, totalChunks={}",
+                    checkResult.getTaskId(), checkResult.getOrigfileName(), checkResult.getTotalChunks());
             try {
                 md5=mergeChunks(Paths.get(pathhead, Const.PATH_TEMP, Const.PATH_UPLOAD, checkResult.getTaskId()),
                         checkResult.getTotalChunks(),
                         path,
                         extName);
+                log.info("分片合并成功: taskId={}, md5={}", checkResult.getTaskId(), md5);
                 // 合并后文件在 pathhead/{md5}（无扩展名），重命名为 pathhead/{md5}.{ext}
 //                Path finalFileNoExt = Paths.get(pathhead, md5);
                 Path finalFileWithExt = Paths.get(pathhead, md5 + "." + extName);
@@ -286,10 +307,20 @@ public class uploadServicemake implements uploadService {
                    log.warn("删除临时文件{}失败",Paths.get(pathhead,
                            Const.PATH_TEMP, Const.PATH_UPLOAD, checkResult.getTaskId()));
             } catch (IOException e) {
+                log.error("文件合并失败: taskId={}, fileName={}, error={}",
+                        checkResult.getTaskId(), checkResult.getOrigfileName(), e.getMessage(), e);
+                // 清理临时分片目录
+                deleteDir(Paths.get(pathhead, Const.PATH_TEMP, Const.PATH_UPLOAD, checkResult.getTaskId()));
+                // 清理合并残留文件
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    log.warn("清理合并残留文件失败: {}", path);
+                }
                 throw new ManageException("文件合并失败");
             }
-            String fileKey = "file:md5:" + md5;
-            String taskInfoKey = "task:info:" + checkResult.getTaskId();
+            String fileKey =Const.REDIS_FILE_MD5_KEY + md5;
+            String taskInfoKey =Const.REDIS_FILE_TASK_INFO_KEY + checkResult.getTaskId();
             List<String> keys = Arrays.asList(fileKey, taskInfoKey);
             DefaultRedisScript<List> script = new DefaultRedisScript<>();
             script.setScriptSource(new ResourceScriptSource(new ClassPathResource("unlockAfterCheck.lua")));
@@ -313,6 +344,7 @@ public class uploadServicemake implements uploadService {
     private String mergeChunks(Path tempDir, int totalChunks, Path destPath,String extName) throws IOException {
         // 确保目标父目录存在
         Files.createDirectories(destPath.getParent());
+        log.info("合并分片开始: tempDir={}, totalChunks={}, destPath={}", tempDir, totalChunks, destPath);
 
         MessageDigest md;
         try {
@@ -348,6 +380,7 @@ public class uploadServicemake implements uploadService {
         } else {
             Files.move(destPath, finalFile);
         }
+        log.info("合并分片完成: md5={}, finalFile={}", md5, finalFile);
         return md5;
     }
     //递归删除文件夹的方法

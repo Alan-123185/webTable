@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xushu.webtable.mapper.userMapper">
+
+<select id="selectUserByName" resultType="com.xushu.webtable.common.selectUserBean">
+    select id,status,volume,user_name,email,all_volume from user where 1=1
+    <if test="userName != null and  userName != ''">
+      and   user_name like concat('%',#{userName},'%')
+    </if>
+</select>
+
+<select id="selectBannedByName" resultType="com.xushu.webtable.common.selectUserBean">
+        select u.id ,u.status,u.volume,u.user_name,u.email,u.all_volume from user u inner join banned_user bu where bu.user_id=u.id and 1=1
+        <if test="userName != null and  userName != ''">
+            and   user_name like concat('%',#{userName},'%')
+        </if>
+</select>
+
+</mapper>
+

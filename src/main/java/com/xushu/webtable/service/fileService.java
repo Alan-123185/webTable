@@ -18,4 +18,5 @@ public interface fileService {
      Integer rename(Integer fileId,String newName);
      void move(Integer fileId,Integer parentId);
      void batchDownload(List<Integer> fileIds, HttpServletResponse response);
+     void forceDelete(List<Integer> fileIds);
 }

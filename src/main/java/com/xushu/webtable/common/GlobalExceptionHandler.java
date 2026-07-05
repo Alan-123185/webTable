@@ -44,6 +44,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常: {}", e.getMessage(), e);
-        return Result.error(500,"系统异常: " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
+        return Result.error(Const.HTTP_INTERNAL_ERROR,"系统异常: " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
     }
 }

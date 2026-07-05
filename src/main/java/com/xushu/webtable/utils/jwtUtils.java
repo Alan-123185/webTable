@@ -31,7 +31,7 @@ public class jwtUtils {
     // 将配置的过期时间赋值给静态变量
         expiration = expConfig;
     }
-    public static String makejwt(String username,Long id,Integer role){
+    public static String makejwt(String username,Integer id,Integer role){
         // 计算过期时间：当前时间 + 3600秒（1小时）
         Date date=new Date(System.currentTimeMillis()+expiration);
         // 创建Map存储要放入token中的数据

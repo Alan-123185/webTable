@@ -12,8 +12,8 @@ import com.xushu.webtable.mapper.fileMapper;
 import com.xushu.webtable.mapper.recycleBinMapper;
 import com.xushu.webtable.mapper.uploadMapper;
 import com.xushu.webtable.service.fileService;
+import com.xushu.webtable.service.recycleBinService;
 import com.xushu.webtable.utils.CurrentHolder;
-import com.xushu.webtable.utils.RedisLockTool;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,8 +33,8 @@ import java.util.zip.ZipOutputStream;
 
 @Service
 public class fileServicemake implements fileService {
-    @Autowired
-    private RedisLockTool redisLockTool;
+//    @Autowired
+//    private RedisLockTool redisLockTool;
     @Value("${user.volume}")
     private Long volume;
     @Autowired
@@ -49,6 +49,8 @@ public class fileServicemake implements fileService {
     private String path;
     @Autowired
     private RedisTemplate<String,Object> redisTemplate;
+    @Autowired
+    private recycleBinService recycleBinService;
 
     @Override
     public selectFileBean select(String originalFileName, Integer userId, int page, int number, Integer parentId) {
@@ -58,6 +60,19 @@ public class fileServicemake implements fileService {
         return new selectFileBean(p.getResult(), p.getTotal()); // 返回封装好的分页结果对象，包含数据列表和总记录数
     }
 
+    /**
+     * 这个软删除的代码一直没想好！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+     * @param ids 多项删除的文件id集合
+     *
+     *
+     *
+     *
+     * 经过反复思考，发现softdelete方法里面不需要提供任何删除操作，仅需两个步骤
+     *            1.首先，把文件记录添加到回收站
+     *            2，然后，更新用户已用空间
+     *            3.所有删除操作移动到回收站的彻底删除方法里面
+     *
+     */
     @Override
     @Transactional
     public void softdelete(List<Integer> ids) {
@@ -72,16 +87,16 @@ public class fileServicemake implements fileService {
             // 根据ID查询文件信息并添加到列表中
             files.add(mapper.selectFileById(id));
             // 如果当前ID对应的是文件夹（isFolder==1），则将其ID加入待删除集合
-            if (mapper.selectFileById(id).getIsFolder() == Const.FILE_TYPE_FOLDER) id0s.add(id);
+            if (mapper.selectFileById(id).getIsFolder() == Const.FILE_TYPE_FOLDER) mapper.deleteSingleFile(id);//是文件夹不管，直接删除
         }
-        // 调用递归方法toOnly，将文件夹展开，获取所有需要删除的具体文件对象，并存入onlyid0s集合
+        // 调用递归方法toOnly，将文件夹展开，获取所有需要删除的具体文件对象，并存入onlyid0s集合，这个集合里面不包含文件夹
         onlyid0s = toOnly((ArrayList<File>) files, onlyid0s);
         // 遍历所有需要实际处理（删除或减少引用）的文件对象
         for (File f : onlyid0s) {
             // 获取当前文件的ID
             Integer id = f.getId();
             // 权限校验：如果文件的所有者ID与当前登录用户ID不一致，则抛出403权限错误异常
-            if (f.getUserId() != CurrentHolder.get())
+            if (!f.getUserId().equals(CurrentHolder.get()))
                 //权限错误
                 throw new ManageException(Const.HTTP_FORBIDDEN, "权限错误");
             // 获取文件的MD5值（即文件名在底层存储中的标识）
@@ -92,7 +107,7 @@ public class fileServicemake implements fileService {
             time = time.plusDays(Const.RECYCLE_BIN_EXPIRY_DAYS);
             recycleBinMapper.recyclefile(f, time);
             // 如果当前逻辑文件ID等于原始文件记录ID，说明这是该物理文件的最后一个关联记录或主记录，清理所有者信息
-            if (id == id0) {
+            if (id.equals(id0)) {
                 mapper.cleanower(id0);
             }
             // 再次根据MD5查询原始文件记录，获取当前的引用计数（refCount）
@@ -100,9 +115,11 @@ public class fileServicemake implements fileService {
             //只能查找>0的！不合理！
             // 如果引用计数为1，说明这是最后一个指向该物理文件的逻辑记录，需要彻底删除物理文件和数据库记录
             if (refcount == 1) {
+                //是最后一个文件
                 /**
                  * 这个地方为了适应回收站机制和逻辑删除，不能彻底删除文件，只能将文件从file中删除并且移入recycle_bin里面，并减少引用计数
                  */
+
                 //完全没有文件,删磁盘文件，最后一个文件
                 // 获取该文件在磁盘上的存储路径
 //                String path=mapper.selectFileById(id0).getPath();
@@ -119,12 +136,11 @@ public class fileServicemake implements fileService {
                 id0s.add(id);    ////这里防止删掉原始文件，当最后一个删除者是文件初始作者的时候
                 // 删除分享链接等关联数据
                 mapper.deletelink(id0);
-
             }
             // 如果引用计数大于1，说明还有其他用户或记录引用该物理文件，只需删除当前逻辑记录
             else if (refcount > 1) {
                 // 如果当前ID不是原始文件记录ID（即只是普通的一个副本引用），则将其加入待删除集合
-                if (id != id0)
+                if (!id.equals(id0))
                     id0s.add(id);
             }
             // 无论哪种情况，都将原始文件记录的引用计数减1
@@ -148,6 +164,8 @@ public class fileServicemake implements fileService {
             // 累加文件大小
             if(f.getIsFolder() == Const.FILE_TYPE_FILE)
             sum += f.getFileSize();
+
+            mapper.deletelink(id);
         }
         // 如果有需要删除的记录
         if (!id0s.isEmpty()) {
@@ -155,19 +173,19 @@ public class fileServicemake implements fileService {
             User u = uploadmapper.selectUserById(CurrentHolder.get());
             // 更新用户的已用空间：原空间减去删除文件的总大小
             u.setVolume(u.getVolume() - sum);
-            // 将更新后的用户空间信息保存回数据库
+//            // 将更新后的用户空间信息保存回数据库
             uploadmapper.updateVolume(u);
-            // 批量删除数据库中的文件记录
+//            // 批量删除数据库中的文件记录
             mapper.deleteFile(new ArrayList<>(id0s));//删除记录
         }
     }
 
     @Override
     public shareinfo share(Integer fileId) {
-        if (mapper.selectFileById(fileId).getUserId() != CurrentHolder.get()) {
+        if (!mapper.selectFileById(fileId).getUserId().equals(CurrentHolder.get())) {
             throw new ManageException(Const.HTTP_FORBIDDEN, "权限错误");
         }
-        if (mapper.selectFileById(fileId).getIsFolder() == Const.FILE_TYPE_FOLDER) {
+        if (mapper.selectFileById(fileId).getIsFolder().equals(Const.FILE_TYPE_FOLDER)) {
             throw new ManageException(Const.HTTP_BAD_REQUEST, "文件夹不能分享");
         }
         String link = UUID.randomUUID().toString().substring(0, Const.SHARE_LINK_LENGTH);
@@ -208,7 +226,7 @@ public class fileServicemake implements fileService {
         if (file == null) {
             throw new ManageException(Const.HTTP_NOT_FOUND, "文件不存在");
         }
-        if (file.getUserId() != CurrentHolder.get() || folder.getUserId() != CurrentHolder.get()) {
+        if (!file.getUserId().equals(CurrentHolder.get())||!folder.getUserId().equals(CurrentHolder.get())){
             throw new ManageException(Const.HTTP_FORBIDDEN, "权限错误");
         }
         mapper.movedir(fileId, parentId);
@@ -216,7 +234,7 @@ public class fileServicemake implements fileService {
 
     @Override
     public Integer store(String link, Integer parentId) {
-        if (parentId != Const.PARENT_ID_ROOT && mapper.selectFileById(parentId).getUserId() != CurrentHolder.get()) {
+        if (!parentId.equals(Const.PARENT_ID_ROOT)&& !mapper.selectFileById(parentId).getUserId().equals(CurrentHolder.get())) {
             throw new ManageException(Const.HTTP_FORBIDDEN, "权限错误");
         }
         shareinfo linkinfo = mapper.findlink(link);
@@ -238,7 +256,8 @@ public class fileServicemake implements fileService {
         }
         //File  = uploadmapper.selectByMd5(md5);
         uploadmapper.updateRefCount(existFile.getId());
-        uploadmapper.insertRecord(new File(md5, existFile.getOriginalFileName(), CurrentHolder.get(), existFile.getFileSize(), existFile.getPath(), LocalDateTime.now(), Const.REFCOUNT_SECOND_UPLOAD, parentId, Const.FILE_TYPE_FILE));
+        uploadmapper.insertRecord(new File(md5, existFile.getOriginalFileName(), userId, existFile.getFileSize(), existFile.getPath(), LocalDateTime.now(), Const.REFCOUNT_SECOND_UPLOAD, parentId, Const.FILE_TYPE_FILE));
+        uploadmapper.updateVolume(user);//更新用户已用空间
         return Const.STORE_SUCCESS;
     }
 
@@ -253,7 +272,7 @@ public class fileServicemake implements fileService {
         //有权限
         File file = mapper.selectFileById(fileId);
         if (file == null) throw new ManageException(Const.HTTP_NOT_FOUND, "文件不存在");
-        if (file.getUserId() != CurrentHolder.get()) throw new ManageException(Const.HTTP_FORBIDDEN, "权限错误");
+        if (!file.getUserId().equals(CurrentHolder.get())) throw new ManageException(Const.HTTP_FORBIDDEN, "权限错误");
         //先给文件引用数加1，防止被删除
         //   uploadmapper.updateRefCount(fileId);
 //        //下载逻辑
@@ -261,7 +280,7 @@ public class fileServicemake implements fileService {
 //                Const.LOCK_LEASE_TIME_SECONDS,
 //                Const.LOCK_RETRY_COUNT,
 //                Const.LOCK_RETRY_INTERVAL_MS);
-        redisTemplate.opsForValue().increment(Const.REDIS_DOWNLOAD_LOCK_KEY + fileId);
+        redisTemplate.opsForValue().increment(Const.REDIS_DOWNLOAD_LOCK_KEY + fileId);//如果在下载的过程中被物理删除，这个代表的意义是一个文件正在被多少人下载
         redisTemplate.expire(Const.REDIS_DOWNLOAD_LOCK_KEY + fileId, 1, TimeUnit.HOURS); // 兜底过期，防止死key
         // 4. 再次检查文件状态（防止在获取锁之前被删除）
         file = mapper.selectFileById(fileId);
@@ -302,7 +321,7 @@ public class fileServicemake implements fileService {
                 if (fileInfo == null) {
                     throw new ManageException(Const.HTTP_NOT_FOUND, "文件不存在");
                 }
-                if (fileInfo.getUserId() != CurrentHolder.get()) {
+                if (!fileInfo.getUserId().equals(CurrentHolder.get())) {
                     throw new ManageException(Const.HTTP_FORBIDDEN, "权限错误");
                 }
                 redisTemplate.opsForValue().increment(Const.REDIS_DOWNLOAD_LOCK_KEY + fileId);
@@ -323,6 +342,20 @@ public class fileServicemake implements fileService {
                 redisTemplate.opsForValue().decrement(Const.REDIS_DOWNLOAD_LOCK_KEY + id);
             }
         }
+    }
+
+    /**
+     *
+     *
+     * 这里强力删除的代码还没写！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+     *
+     *
+     *
+     * @param fileIds
+     */
+    @Override
+    public void forceDelete(List<Integer> fileIds) {
+
     }
 
     /**
@@ -347,15 +380,15 @@ public class fileServicemake implements fileService {
         // 提取文件扩展名
         String extname = originalFileName.substring(originalFileName.lastIndexOf(".") + 1);
         // 权限校验：判断当前用户是否为文件所有者，或者该文件是否存在有效的分享链接
-        if (file!=null&&file.getUserId() == CurrentHolder.get()||link!=null&&sharelinkinfo(link)!=null) {
+        if (file!=null&&file.getUserId().equals(CurrentHolder.get())||link!=null&&sharelinkinfo(link)!=null) {
             // 有权限访问
             // 增加文件引用计数，防止在预览过程中文件被其他线程删除
             uploadmapper.updateRefCount(fileId);
             // 构建文件路径对象
-            Path path = Path.of(file.getPath());
-            // 检查物理文件是否存在，若不存在则抛出404异常
-            if (!Files.exists(path)) throw new ManageException(Const.HTTP_NOT_FOUND, "文件丢失");
             try {
+                Path path = Path.of(file.getPath());
+                // 检查物理文件是否存在，若不存在则抛出404异常
+                if (!Files.exists(path)) throw new ManageException(Const.HTTP_NOT_FOUND, "文件丢失");
                 // 定义内容类型变量
                 String contentType;
                 // 根据文件扩展名确定响应的Content-Type

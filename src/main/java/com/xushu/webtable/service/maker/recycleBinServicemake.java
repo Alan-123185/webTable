@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class recycleBinServicemake implements recycleBinService {
@@ -43,7 +44,7 @@ public class recycleBinServicemake implements recycleBinService {
                 f.setRefCount(0);
                 uploadmapper.updateRefCount(uploadmapper.selectByMd5(md5).getId());
             } else f.setRefCount(1);
-            if (f.getUserId() != CurrentHolder.get()) {
+            if (!f.getUserId().equals(CurrentHolder.get())) {
                 throw new ManageException(Const.HTTP_FORBIDDEN, "权限错误");
             }
             if (recycleBinMapper.getrecycletime(id).isBefore(LocalDateTime.now())) {
@@ -54,35 +55,43 @@ public class recycleBinServicemake implements recycleBinService {
             uploadmapper.insertRecord(f);
         }
     }
+
+    /**
+     * 获取当前用户的回收站文件
+     */
+
     @Override
     public List<File> getRecycleFiles(Integer userId){
         return recycleBinMapper.getRecycleFiles(userId);
     }
 
+
+
     /**
      * 回收站删除
      *
-     * @param ids 文件ID列表
+     * @param ids 回收站文件ID列表，不等于文件ID!
      */
     @Override
     @Transactional
     public void delete(List<Integer> ids) {
         for (Integer id : ids) {
             File f = recycleBinMapper.selectFileInBin(id);
-            if (f.getUserId() != CurrentHolder.get()) {
+            if (!f.getUserId().equals(CurrentHolder.get())) {
                 throw new ManageException(Const.HTTP_FORBIDDEN, "权限错误");
             }
             int count = recycleBinMapper.binfilecount(f.getFileName());
-            if (count == 1) {
+
+            if (count == 1&&uploadmapper.selectByMd5(f.getFileName())==null) {//文件已经无人拥有
                 //删除磁盘文件
                 try {
-                    Files.delete(Path.of(f.getPath()));
+                    Files.deleteIfExists(Path.of(f.getPath()));
                 } catch (IOException e) {
                     throw new ManageException(Const.HTTP_NOT_FOUND, "文件不存在");
                 }
             }
-            recycleBinMapper.deletebinfile(id);
         }
+        recycleBinMapper.deletebinfile(ids);
     }
 
 }

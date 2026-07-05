@@ -13,6 +13,11 @@ public interface fileMapper {
 
     void deleteFile(List<Integer> ids);
 
+    @Delete("delete from file where id=#{id}")
+    void deleteSingleFile(Integer id);
+
+    @Update("update file set status=1 where ")
+
     @Select("select * from file where id=#{id}")
     File selectFileById(Integer id);
 

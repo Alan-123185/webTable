@@ -1,0 +1,60 @@
+spring:
+  mail:
+    host: smtp.qq.com
+    username: your_email@qq.com
+    port: 465
+    protocol: smtps
+    password: your_email_auth_code
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+          auth: true
+          starttls:
+            enable: true
+
+  application:
+    name: studysystem
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://your_mysql_host:3306/your_database?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: your_db_username
+    password: your_db_password
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+  file:
+    upload-dir: your_upload_directory
+
+  data:
+    redis:
+      host: your_redis_host
+      port: 6379
+      password: your_redis_password
+
+mybatis:
+  mapper-locations: classpath*:com/xushu/webtable/*Mapper.xml
+  configuration:
+    log-imp: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: NULL
+
+jwt:
+  secret-key: your_jwt_secret_key
+  expiration: 43200000
+
+path:
+  pathhead: /your/local/or/server/path/Disk/
+
+extName:
+  type: jpg,jpeg,png,gif,bmp,webp,pdf,txt,md,json,xml
+
+user:
+  volume: 1073741824
+
+kind: Application

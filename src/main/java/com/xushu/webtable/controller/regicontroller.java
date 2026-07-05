@@ -33,6 +33,8 @@ public class regicontroller {
         }
         return Result.error("注册失败");
     }
+
+
     @Log(value="用户注册",operationType = Log.OperationType.REGISTER)
     @Operation(summary="用户注册",description="校验验证码")
     @PostMapping("/register")

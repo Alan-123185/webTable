@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -27,6 +28,7 @@ public class RecycleCleanupTask {
     @Scheduled(fixedDelay = 1000 * 60 * 60 * 24)
     public void cleanup() {
         List<Integer> rubishids = recycleBinMapper.getrubish();
+        List<Integer> rubishtodelete=new ArrayList<>();
         for (Integer id : rubishids) {
             File f = recycleBinMapper.selectFileInBin(id);
             if (f == null) continue;
@@ -36,13 +38,14 @@ public class RecycleCleanupTask {
             if (recycleBinMapper.binfilecount(f.getFileName()) == 1) {
                 try {
                     // 再次确认状态（防止加锁期间变化）
-                    Files.delete(Path.of(f.getPath()));
-                    recycleBinMapper.deletebinfile(id); // 数据库删除
+                    Files.deleteIfExists(Path.of(f.getPath()));
+                    rubishtodelete.add(id);
                 } catch (Exception e) {
                     log.error("物理文件删除失败（将稍后重试或人工处理）: {}", f.getPath(), e);
                 }
             }
         }
+        recycleBinMapper.deletebinfile(rubishtodelete); // 数据库删除
     }
 }
 
