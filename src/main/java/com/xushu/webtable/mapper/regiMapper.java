@@ -20,7 +20,7 @@ public interface regiMapper {
      * 注意：当使用 useGeneratedKeys 时，通常建议返回类型为 void 或 int/Integer（表示受影响行数），
      * 生成的主键会直接回填到 user 对象中，而不是通过返回值获取。
      */
-    @Insert("insert into user (user_name,password,all_volume,email,role) values (#{userName},#{password},#{AllVolume},#{email},#{role})")
+    @Insert("insert into user (user_name,password,email,role) values (#{userName},#{password},#{email},#{role})")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     int register(User user);
 

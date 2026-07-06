@@ -28,13 +28,13 @@ public class loginServicemake implements loginService {
     @Override
     public LoginResult loginpan(LoginRequest loginRequest) {
         User u = loginmapper.findName(loginRequest.getUserName());
-        if(redisTemplate.hasKey(Const.REDIS_USER_BANNED+":"+u.getId()) || usermapper.findBannedUser(u.getId())!=0){
-            return new LoginResult(Const.LOGIN_BANNED, null);
-        }
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         if (u == null) {
             return new LoginResult(Const.LOGIN_NOT_REGISTERED, null); // 用户不存在
         }
+        if(redisTemplate.hasKey(Const.REDIS_USER_BANNED+":"+u.getId()) || usermapper.findBannedUser(u.getId())!=0){
+            return new LoginResult(Const.LOGIN_BANNED, u);
+        }
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         if (encoder.matches(loginRequest.getPassword(), u.getPassword())) {
             return new LoginResult(Const.LOGIN_SUCCESS, u);
         }

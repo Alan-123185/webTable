@@ -1,7 +1,5 @@
 package com.xushu.webtable.controller;
 
-import com.github.pagehelper.Page;
-import com.github.pagehelper.PageHelper;
 import com.xushu.webtable.anno.Log;
 import com.xushu.webtable.anno.Role;
 import com.xushu.webtable.common.*;
@@ -9,14 +7,14 @@ import com.xushu.webtable.service.userService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@Controller
+@RestController
 @RequestMapping("/Mydisk/user")
 public class usercontroller {
     @Autowired

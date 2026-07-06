@@ -37,7 +37,6 @@ public class userServicemake implements userService {
     @Override
     public void ban(Integer userId,int level,String reason) {
             loginservice.logout();
-            usermapper.ban(userId);
             switch ( level) {
                 case Const.BAN_LEVEL_1:
                     redisTemplate.opsForValue().set(Const.REDIS_USER_BANNED + ":" + userId, reason);

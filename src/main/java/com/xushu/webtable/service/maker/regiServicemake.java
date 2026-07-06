@@ -61,7 +61,7 @@ public class regiServicemake implements regiService {
             User user=new User(registerRequest.getUserName(),
                     new BCryptPasswordEncoder().encode(registerRequest.getPassword()),
                     registerRequest.getEmail(),
-                    Const.ROLE_USER);
+                    Const.ROLE_USER);   ////这个地方把role写死了
             regimapper.register(user);
             return Const.REGISTER_SUCCESS;
         }

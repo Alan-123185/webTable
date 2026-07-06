@@ -45,6 +45,7 @@ public class RecycleCleanupTask {
                 }
             }
         }
+        if(rubishtodelete.size()>0)
         recycleBinMapper.deletebinfile(rubishtodelete); // 数据库删除
     }
 }

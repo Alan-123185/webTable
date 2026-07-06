@@ -46,6 +46,12 @@ public class logininterceptor implements HandlerInterceptor {
             return true;
         }
         String token = request.getHeader("token");
+        if (token == null || token.isEmpty()) {
+            String auth = request.getHeader("Authorization");
+            if (auth != null && auth.startsWith("Bearer ")) {
+                token = auth.substring(7);
+            }
+        }
         if(token==null||token.isEmpty()){
             token=request.getParameter("token");
         }

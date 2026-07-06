@@ -9,14 +9,13 @@ import java.util.List;
 
 @Mapper
 public interface fileMapper {
+
     List<File> selectFile(String originalFileName, Integer userId, Integer parentId);
 
     void deleteFile(List<Integer> ids);
 
     @Delete("delete from file where id=#{id}")
     void deleteSingleFile(Integer id);
-
-    @Update("update file set status=1 where ")
 
     @Select("select * from file where id=#{id}")
     File selectFileById(Integer id);

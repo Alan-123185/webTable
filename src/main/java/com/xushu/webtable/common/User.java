@@ -14,7 +14,7 @@ public class User {
     private String password;
     private Long volume;
     private String email;
-    private Long AllVolume;
+    private Long allVolume;
     private Integer role;
     private int status;
     public User(String userName, String password,String email){

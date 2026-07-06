@@ -21,9 +21,6 @@ public interface userMapper {
 
     List<selectUserBean> selectUserByName(String userName);
 
-    @Update("update user set status=1 where id=#{userId}")
-    void ban(Integer userId);
-
     @Update("update user set status=0 where id=#{userId}")
     void unbanforstatus(Integer userId);
 
